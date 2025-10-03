@@ -1,0 +1,11 @@
+# Web framework
+Flask==3.0.3
+flask-cors==4.0.1
+# Load env vars from .env
+python-dotenv==1.0.1
+# OpenAI SDK
+openai==1.52.2
+# Production WSGI server (Render uses this)
+gunicorn==23.0.0
+# HTTP transport pinned for compatibility with OpenAI SDK
+httpx==0.27.2

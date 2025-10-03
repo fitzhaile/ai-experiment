@@ -1,0 +1,23 @@
+# Render service definition for deploying this Flask app.
+
+services:
+  - type: web
+    name: ai-experiments
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+
+    # Gunicorn runs the app in production.
+    startCommand: gunicorn app:app
+
+    envVars:
+      - key: OPENAI_API_KEY
+        # Set this in Render Dashboard → Environment. `sync: false` means
+        # the value is managed in Render (not checked into git).
+        sync: false
+
+      # Optional: lock model or project id in production
+      # - key: OPENAI_MODEL
+      #   value: gpt-5-mini
+      # - key: OPENAI_PROJECT
+      #   value: your-project-id
