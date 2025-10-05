@@ -1,0 +1,317 @@
+/* ============================================================================
+   CUSTOM STYLES FOR EUGENE THE AI SEA COW
+   ============================================================================
+   
+   This file contains custom CSS styles that override and extend Pico CSS.
+   Pico CSS is a minimal CSS framework that provides nice default styles.
+   
+   We customize it in two ways:
+   1. CSS Custom Properties (variables) - Override Pico's default values
+   2. Component-specific styles - Add our own styles for chat interface
+   
+   Learn more about Pico CSS customization:
+   https://picocss.com/docs/customize/css-custom-properties
+*/
+
+
+/* ============================================================================
+   1. CSS CUSTOM PROPERTIES (VARIABLES)
+   ============================================================================
+   
+   These variables override Pico CSS defaults. By using variables, we can
+   easily change the look of the entire site by modifying just a few values.
+   
+   The :root selector means these variables are available everywhere in the CSS.
+*/
+
+:root {
+  /* Base font size for the entire site */
+  /* 16px is a good default for readability */
+  --pico-font-size: 16px;
+  
+  /* Border radius for rounded corners on buttons, inputs, etc. */
+  /* Smaller values = sharper corners, larger values = rounder corners */
+  --pico-border-radius: 0.3rem;
+  
+  /* You can add more Pico CSS variable overrides here */
+  /* See: https://picocss.com/docs/customize/css-custom-properties */
+}
+
+
+/* ============================================================================
+   2. LAYOUT STYLES
+   ============================================================================
+   
+   These styles control the overall page layout and structure.
+*/
+
+/* Remove default padding from the body */
+body {
+  padding: 0;
+}
+
+/* Main container that holds all content */
+.container {
+  /* Maximum width prevents the chat from getting too wide on large screens */
+  max-width: 900px;
+  
+  /* Center the container horizontally */
+  /* 2rem top/bottom margin adds space from the edges */
+  margin: 2rem auto;
+}
+
+
+/* ============================================================================
+   3. INPUT ROW STYLES
+   ============================================================================
+   
+   The input row contains the text input, checkbox, and submit button.
+   We use flexbox to arrange them horizontally.
+*/
+
+.row {
+  /* Flexbox makes child elements arrange horizontally */
+  display: flex;
+  
+  /* Space between elements (0.5rem = 8px with default font size) */
+  gap: 0.5rem;
+  
+  /* Vertically center all elements */
+  align-items: center;
+  
+  /* Add space above the input row */
+  margin-top: 1rem;
+}
+
+/* Text input field (takes up all available space) */
+.row input[type="text"] {
+  /* flex: 1 makes the input grow to fill available space */
+  /* This pushes the checkbox and button to the right */
+  flex: 1;
+  
+  /* Remove bottom margin (Pico adds this by default) */
+  margin-bottom: 0;
+}
+
+/* Submit button */
+.row button {
+  /* Remove bottom margin (Pico adds this by default) */
+  margin-bottom: 0;
+  
+  /* Prevent button text from wrapping to multiple lines */
+  white-space: nowrap;
+}
+
+
+/* ============================================================================
+   4. CHECKBOX STYLES
+   ============================================================================
+   
+   The checkbox wrapper contains the checkbox and its label (".gov only").
+*/
+
+.checkbox-wrapper {
+  /* Flexbox arranges checkbox and label horizontally */
+  display: flex;
+  
+  /* Vertically center checkbox and label */
+  align-items: center;
+  
+  /* Small gap between checkbox and label */
+  gap: 0.5rem;
+  
+  /* Prevent label text from wrapping */
+  white-space: nowrap;
+  
+  /* Remove bottom margin */
+  margin-bottom: 0;
+}
+
+/* The checkbox itself */
+.checkbox-wrapper input[type="checkbox"] {
+  /* Explicit size ensures the checkbox is visible */
+  /* (Some browsers make checkboxes very small by default) */
+  width: 1.25rem;
+  height: 1.25rem;
+  
+  /* Remove default margin */
+  margin: 0;
+  
+  /* Show pointer cursor on hover (indicates it's clickable) */
+  cursor: pointer;
+  
+  /* Prevent the checkbox from shrinking if space is tight */
+  flex-shrink: 0;
+}
+
+/* The label next to the checkbox */
+.checkbox-wrapper label {
+  /* Slightly smaller text */
+  font-size: 0.9rem;
+  
+  /* Remove default margin */
+  margin: 0;
+  
+  /* Show pointer cursor on hover (clicking the label toggles the checkbox) */
+  cursor: pointer;
+  
+  /* Prevent text selection when clicking (better UX) */
+  user-select: none;
+}
+
+
+/* ============================================================================
+   5. CHAT LOG STYLES
+   ============================================================================
+   
+   The chat log displays all messages in the conversation.
+*/
+
+/* Chat log container */
+.log {
+  /* Add space above the chat log */
+  margin-top: 1.5rem;
+  
+  /* Flexbox with column direction stacks messages vertically */
+  display: flex;
+  flex-direction: column;
+  
+  /* Space between messages */
+  gap: 1rem;
+}
+
+/* Individual message bubbles (both user and assistant) */
+.msg {
+  /* Limit width to 80% of container */
+  /* This creates the "chat bubble" effect with space on the sides */
+  max-width: 80%;
+  
+  /* Padding inside the message bubble */
+  padding: 0.75rem 1rem;
+  
+  /* Rounded corners (uses the variable we defined above) */
+  border-radius: var(--pico-border-radius);
+  
+  /* Preserve whitespace and line breaks from the message text */
+  white-space: pre-wrap;
+  
+  /* Break long words if needed (prevents overflow) */
+  word-break: break-word;
+  
+  /* Alternative word wrapping (more aggressive, for URLs and long strings) */
+  overflow-wrap: anywhere;
+}
+
+/* User messages (questions from the user) */
+.user {
+  /* Align to the right side */
+  align-self: flex-end;
+  
+  /* Use Pico's primary color for background */
+  background: var(--pico-primary-background);
+  
+  /* White text (or whatever color contrasts with the primary color) */
+  color: var(--pico-primary-inverse);
+}
+
+/* Assistant messages (responses from the AI) */
+.assistant {
+  /* Align to the left side */
+  align-self: flex-start;
+  
+  /* Light background (uses Pico's card background color) */
+  background: var(--pico-card-background-color);
+  
+  /* Subtle border */
+  border: 1px solid var(--pico-muted-border-color);
+}
+
+/* Extra vertical spacing between alternating messages */
+/* This makes it easier to see where one exchange ends and another begins */
+.msg.user + .msg.assistant,
+.msg.assistant + .msg.user {
+  margin-top: 1.5rem;
+}
+
+
+/* ============================================================================
+   6. STATUS MESSAGE STYLES
+   ============================================================================
+   
+   The status message shows "Looking for your answers..." while waiting.
+*/
+
+.status {
+  /* Add space above the status message */
+  margin-top: 0.75rem;
+  
+  /* Italic text makes it look less prominent */
+  font-style: italic;
+  
+  /* Slightly transparent (70% opacity) */
+  opacity: 0.7;
+  
+  /* Slightly smaller text */
+  font-size: 0.9rem;
+}
+
+
+/* ============================================================================
+   7. MARKDOWN FORMATTING IN ASSISTANT MESSAGES
+   ============================================================================
+   
+   These styles make markdown-formatted text look nice in assistant messages.
+   The JavaScript converts markdown to HTML, and these styles format it.
+*/
+
+/* Headings in assistant messages */
+.assistant h1,
+.assistant h2,
+.assistant h3 {
+  /* Reduce default heading margins for tighter spacing */
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Paragraphs in assistant messages */
+.assistant p {
+  /* Small vertical margins */
+  margin: 0.5rem 0;
+}
+
+/* Lists in assistant messages */
+.assistant ul,
+.assistant ol {
+  /* Small vertical margins, indent from the left */
+  margin: 0.5rem 0 0.5rem 1.5rem;
+}
+
+/* Inline code in assistant messages (e.g., `code`) */
+.assistant code {
+  /* Subtle background color (uses Pico's code background) */
+  background: var(--pico-code-background-color);
+  
+  /* Small padding around the text */
+  padding: 0.2rem 0.4rem;
+  
+  /* Slightly rounded corners */
+  border-radius: 0.25rem;
+  
+  /* Slightly smaller text */
+  font-size: 0.9em;
+}
+
+/* Links in assistant messages */
+.assistant a {
+  /* Use the primary color for links */
+  color: var(--pico-primary);
+  
+  /* Underline links (makes them more obvious) */
+  text-decoration: underline;
+}
+
+/* Bold text in assistant messages */
+.assistant strong {
+  /* Semi-bold weight (not too heavy) */
+  font-weight: 600;
+}
