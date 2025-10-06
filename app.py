@@ -64,10 +64,15 @@ CORS(app)
 
 # Create the OpenAI client once when the app starts
 # This client will be reused for all API requests (more efficient than creating it each time)
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Set a longer timeout (10 minutes) to handle deep research models that take a long time
+openai_client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    timeout=600.0  # 10 minutes timeout for deep research models
+)
 
 # The AI model we'll use for all requests
 # gpt-4o-mini is a fast, cost-effective model that's good for chat
+# Prioritizing speed over the accuracy gains of GPT-5 variants
 MODEL = "gpt-4o-mini"
 
 
@@ -110,6 +115,7 @@ def api_chat():
     
     Query parameters:
         web=1 : Enable web search for live information
+        model=<model_name> : Specify which OpenAI model to use (optional)
     
     Returns (JSON):
         Success: {"text": "The AI's response text", "web": true/false}
@@ -134,6 +140,10 @@ def api_chat():
         # Validate that messages is a list and not empty
         if not isinstance(messages, list) or not messages:
             return jsonify({"error": "messages[] required"}), 400
+        
+        # Get the model from query parameter, or use the default
+        # This allows the user to select which model to use via the dropdown
+        model = request.args.get("model", MODEL)
 
         # ====================================================================
         # 2. WEB SEARCH MODE (OPTIONAL)
@@ -163,7 +173,7 @@ def api_chat():
                 # Call OpenAI's Responses API with the web_search tool
                 # This allows the AI to search the web for current information
                 resp = openai_client.responses.create(
-                    model=MODEL,                          # Which AI model to use
+                    model=model,                          # Which AI model to use (from dropdown)
                     input=full_context,                   # The conversation so far
                     tools=[{"type": "web_search"}],       # Enable web search tool
                     tool_choice="auto",                   # Let the AI decide when to search
@@ -188,7 +198,7 @@ def api_chat():
         # Use the standard Chat Completions API (no web search)
         # This is faster and cheaper but doesn't have access to current information
         chat = openai_client.chat.completions.create(
-            model=MODEL,        # Which AI model to use
+            model=model,        # Which AI model to use (from dropdown)
             messages=messages   # The conversation history
         )
         

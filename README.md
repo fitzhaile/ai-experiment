@@ -1,11 +1,11 @@
 # Eugene the AI Sea Cow 🦭
 
-A simple, elegant chat interface powered by OpenAI's GPT models with live web search capability.
+A simple, elegant chat interface powered by OpenAI's GPT-5-mini with live web search capability.
 
 ## Overview
 
 Eugene is a conversational AI assistant that can:
-- Answer questions using GPT-4o-mini
+- Answer questions using GPT-5-mini (OpenAI's latest mini model)
 - Search the web for current information (using OpenAI's web_search tool)
 - Filter results to only cite .gov sources (optional)
 - Remember conversation context for natural, multi-turn discussions
@@ -268,7 +268,7 @@ Another process is using the port. Either:
 - **Backend**: Python 3, Flask, OpenAI Python SDK
 - **Frontend**: Vanilla JavaScript (no frameworks), HTML5, CSS3
 - **CSS Framework**: Pico CSS (minimal, classless CSS framework)
-- **AI**: OpenAI GPT-4o-mini with web_search tool
+- **AI**: OpenAI GPT-5-mini with web_search tool
 - **Deployment**: Render (with gunicorn)
 
 ## License

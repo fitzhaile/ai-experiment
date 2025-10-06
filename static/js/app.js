@@ -29,6 +29,12 @@ const statusEl = document.getElementById('status');
 // Get the ".gov only" checkbox
 const govOnlyCheckbox = document.getElementById('govOnly');
 
+// Get the model selector dropdown
+const modelSelect = document.getElementById('modelSelect');
+
+// Get the deep research warning message element
+const deepResearchWarning = document.getElementById('deepResearchWarning');
+
 
 // ============================================================================
 // CONVERSATION STATE
@@ -203,8 +209,16 @@ async function send() {
     // SHOW LOADING STATE
     // ========================================================================
     
-    // Show "Looking for your answers..." message
-    statusEl.textContent = 'Looking for your answers…';
+    // Get the selected model from the dropdown
+    const selectedModel = modelSelect.value;
+    
+    // Show different loading messages based on the model
+    // Deep research models take much longer (minutes instead of seconds)
+    if (selectedModel.includes('deep-research')) {
+      statusEl.textContent = '🔬 Deep research in progress... this may take several minutes…';
+    } else {
+      statusEl.textContent = 'Looking for your answers…';
+    }
     
     // Disable the button and input field while waiting for a response
     // This prevents the user from sending multiple messages at once
@@ -217,7 +231,8 @@ async function send() {
     
     // Send a POST request to the /api/chat endpoint
     // ?web=1 enables web search (the AI can look up current information)
-    const res = await fetch('/api/chat?web=1', {
+    // ?model=... specifies which OpenAI model to use
+    const res = await fetch(`/api/chat?web=1&model=${selectedModel}`, {
       method: 'POST',                                    // HTTP method
       headers: { 'Content-Type': 'application/json' },  // Tell server we're sending JSON
       body: JSON.stringify({ messages })                // Convert messages array to JSON string
@@ -272,6 +287,18 @@ async function send() {
 // ============================================================================
 // EVENT LISTENERS - Respond to user actions
 // ============================================================================
+
+// When the model selector changes, show/hide the deep research warning
+modelSelect.addEventListener('change', () => {
+  // Check if the selected model is a deep research model
+  if (modelSelect.value.includes('deep-research')) {
+    // Show the warning message
+    deepResearchWarning.style.display = 'block';
+  } else {
+    // Hide the warning message
+    deepResearchWarning.style.display = 'none';
+  }
+});
 
 // When the submit button is clicked, send the message
 btn.addEventListener('click', send);
