@@ -70,10 +70,10 @@ openai_client = OpenAI(
     timeout=600.0  # 10 minutes timeout for deep research models
 )
 
-# The AI model we'll use for all requests
-# gpt-4o-mini is a fast, cost-effective model that's good for chat
-# Prioritizing speed over the accuracy gains of GPT-5 variants
-MODEL = "gpt-4o-mini"
+# The AI model we'll use for all requests (default fallback)
+# gpt-4o is the GPT-4 flagship model - balanced performance and quality
+# This is used when no model is specified in the API request
+MODEL = "gpt-4o"
 
 
 # ============================================================================
