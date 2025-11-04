@@ -39,11 +39,11 @@
   <!-- Pico CSS: A minimal CSS framework that provides nice default styles -->
   <!-- This is loaded first so our custom styles can override it -->
   <!-- Using the unminified version for easier reading and learning -->
-  <link rel="stylesheet" href="/static/css/pico.css" />
+  <link rel="stylesheet" href="/static/css/pico.css?v={{ v }}" />
   
   <!-- Custom CSS: Our own styles and overrides for Pico CSS -->
   <!-- This is loaded second so it takes priority over Pico -->
-  <link rel="stylesheet" href="/static/css/custom.css" />
+  <link rel="stylesheet" href="/static/css/custom.css?v={{ v }}" />
 </head>
 
 <body>
@@ -71,8 +71,8 @@
       
       <!-- Source filter dropdown - hidden by default -->
       <select id="sourceFilter" style="display: none;">
-        <option value="bryancounty">Bryan County GA</option>
-        <option value="gov">.gov domains</option>
+        <option value="bryancounty">Bryan Co.</option>
+        <option value="gov">.Gov domains</option>
       </select>
       
       <!-- Cancel link to hide the source dropdown -->
@@ -139,6 +139,6 @@
   <!-- This script tag loads our JavaScript file -->
   <!-- It's at the end of the body so the HTML loads first -->
   <!-- This ensures all elements exist before JavaScript tries to access them -->
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v={{ v }}"></script>
 </body>
 </html>
