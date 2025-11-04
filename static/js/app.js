@@ -56,61 +56,12 @@ const deepResearchWarning = document.getElementById('deepResearchWarning');
 // This includes system messages, user messages, and assistant responses
 // The system message tells the AI how to behave
 
-// Default (general) system message
-const generalSystemMessage = 'You are a concise assistant that writes clear answers.';
+// System message that tells the AI how to behave
+const systemMessage = 'You are a concise assistant that writes clear answers.';
 
-// Specialized system message for Black/African American topics
-const blackTopicsSystemMessage = `You are a specialized AI assistant focused EXCLUSIVELY on Black/African American topics, including:
-- History, culture, and heritage
-- Current events and news affecting Black communities
-- Achievements, innovations, and contributions by Black individuals
-- Social justice, civil rights, and equity issues
-- Business, economics, and community development
-- Arts, literature, music, and entertainment
-- Education and scholarship
-- Health, wellness, and social issues
-
-Guidelines:
-- When performing web searches, prioritize sources from .gov, .edu, HBCUs, and Black-owned media
-- If a query is completely unrelated to Black/African American topics, politely explain your specialization and ask the user to rephrase or ask something relevant to the Black/African American experience
-- If a query has indirect relevance to Black communities, explain the connection
-- Always provide historical context when relevant
-- Cite sources whenever possible
-- Be educational, respectful, and thorough
-
-Statistical Data (Census/ACS, ABS, BLS, etc.):
-- For ANY requests involving Census Bureau (ACS), American Community Survey, Bureau of Labor Statistics (BLS), or other statistical agencies that have race categories, AUTOMATICALLY assume the user is asking for Black/African American data ONLY
-- Look for categories like "Black alone", "Black or African American alone", "Black alone or in combination", or similar race designations
-- If Black race category data exists, provide it without asking for clarification
-- If Black race category data does NOT exist for that dataset, simply state: "This dataset does not include a separate Black/African American category"
-- HOWEVER, if the user SPECIFICALLY requests data for another race (e.g., "What is the median income for White families in Atlanta?" or "Compare Black and Hispanic poverty rates"), honor that request and provide the requested data
-
-CRITICAL - Data Sources and Recency:
-- ALWAYS use data.census.gov as your PRIMARY source for all demographic and economic data
-- data.census.gov is the official portal for detailed Census Bureau tables with race breakdowns
-- ALWAYS use the MOST RECENT data available (check for latest year - typically 2023 or 2024 estimates)
-- When searching web, use: "site:data.census.gov [topic] [location] Black"
-- For county-level data, search: "site:data.census.gov [County Name] County [State] median household income Black"
-- Look for ACS (American Community Survey) tables:
-  * Table B19013B = Median Household Income (Black or African American Alone)
-  * Table B17001B = Poverty Status (Black or African American Alone)
-  * Table B23001B = Employment Status (Black or African American Alone)
-- Always cite: table number, geography, year, and estimate type (1-year or 5-year)
-- Example searches:
-  * "site:data.census.gov Chatham County Georgia median household income Black 2023"
-  * "site:data.census.gov table B19013B Chatham County Georgia"
-  * "data.census.gov American Community Survey Chatham County Black income"
-
-- Examples: 
-  - "median household income in Atlanta" → search Census Bureau for Black household income in Atlanta, latest year
-  - "unemployment rate in Georgia" → search BLS for Black unemployment rate in Georgia, most recent month
-  - "median income for Asian families in Seattle" → provide Asian family income data from Census Bureau, latest year
-  - "compare Black and White unemployment rates" → provide both from official sources with most recent data`;
-
-// Initialize messages with the general system message
-// This will be updated when the Black topics checkbox is checked
+// Initialize messages with the system message
 const messages = [
-  { role: 'system', content: generalSystemMessage }
+  { role: 'system', content: systemMessage }
 ];
 
 
@@ -262,11 +213,6 @@ async function send() {
   // Get the selected source filter
   const sourceFilter = sourceFilterSelect.value;
   
-  // Update the system message based on the source filter selection
-  // This must happen BEFORE adding the user message
-  const blackTopicsMode = (sourceFilter === 'blacktopics');
-  messages[0].content = blackTopicsMode ? blackTopicsSystemMessage : generalSystemMessage;
-  
   // Build the user content with appropriate restrictions based on dropdown selection
   let userContent = content;
   
@@ -277,9 +223,6 @@ async function send() {
   } else if (sourceFilter === 'gov') {
     // Only cite sources from .gov domains
     userContent = content + ' (Only cite sources from .gov domains)';
-  } else if (sourceFilter === 'blacktopics') {
-    // Black/African American topics mode - system message handles this
-    // No additional instruction needed in user content
   }
   
   // Add the user's message to the conversation history
@@ -514,33 +457,15 @@ promptEl.addEventListener('keydown', (e) => {
 /**
  * Check for URL parameters and set source filter accordingly.
  * 
- * Supported parameters:
- * - ?focus=black-community → Sets source filter to "Black/African American topics" and hides the selector
- * 
- * Examples:
- * - http://127.0.0.1:8080/?focus=black-community
+ * Reserved for future URL parameter handling.
  */
 function handleURLParameters() {
   try {
     // Get URL parameters from the current page URL
     const urlParams = new URLSearchParams(window.location.search);
     
-    // Check if focus parameter is set to "black-community"
-    const focus = urlParams.get('focus');
+    // Future URL parameter handling can be added here
     
-    if (focus === 'black-community') {
-      // Set the source filter to Black/African American topics
-      if (sourceFilterSelect) {
-        sourceFilterSelect.value = 'blacktopics';
-      }
-      
-      // Hide the source selector when a URL parameter is set
-      // This creates a cleaner, more focused interface
-      const modelSelector = document.querySelector('.model-selector');
-      if (modelSelector) {
-        modelSelector.style.display = 'none';
-      }
-    }
   } catch (error) {
     // Log any errors but don't break the page
     console.error('Error handling URL parameters:', error);
