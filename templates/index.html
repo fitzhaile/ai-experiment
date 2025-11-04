@@ -59,40 +59,33 @@
          ================================================================== -->
     <header class="page-header">
       <div class="logo">🦭</div>
-      <h1>Sea Cow Research</h1>
+      <h1>Sea Cow AI</h1>
       <p class="subtitle">Intelligent research with source filtering and AI-powered insights</p>
     </header>
     
-    <!-- Model selector - hidden by default, shows on link click -->
-    <!-- Allows user to choose which OpenAI model to use for the entire chat session -->
+    <!-- Model selector -->
     <div class="model-selector">
-      <!-- Link to show/hide the source filter dropdown -->
-      <a href="#" id="changeSourceLink" class="change-model-link">Change data source</a>
+      <!-- Source filter dropdown -->
+      <div class="dropdown-group">
+        <label for="sourceFilter">Data Source:</label>
+        <select id="sourceFilter">
+          <option value="bryancounty">bryancountyga.com</option>
+          <option value="savannah">seda.org</option>
+          <option value="gov">.gov</option>
+        </select>
+      </div>
       
-      <!-- Source filter dropdown - hidden by default -->
-      <select id="sourceFilter" style="display: none;">
-        <option value="bryancounty">Bryan Co.</option>
-        <option value="savannah">Savannah (seda.org)</option>
-        <option value="gov">.Gov domains</option>
-      </select>
-      
-      <!-- Cancel link to hide the source dropdown -->
-      <a href="#" id="cancelSourceLink" class="cancel-model-link" style="display: none;">Cancel</a>
-      
-      <!-- Link to show/hide the model dropdown -->
-      <a href="#" id="changeModelLink" class="change-model-link">Change chat model</a>
-      
-      <!-- Model dropdown - hidden by default -->
-      <select id="modelSelect" style="display: none;">
-        <option value="gpt-4o" selected>gpt-4o (GPT-4 flagship)</option>
-        <option value="gpt-4o-mini">gpt-4o-mini (fastest)</option>
-        <option value="gpt-5-nano">gpt-5-nano (fast GPT-5)</option>
-        <option value="gpt-5-mini">gpt-5-mini (balanced GPT-5)</option>
-        <option value="gpt-5">gpt-5 (most accurate)</option>
-      </select>
-      
-      <!-- Cancel link to hide the model dropdown -->
-      <a href="#" id="cancelModelLink" class="cancel-model-link" style="display: none;">Cancel</a>
+      <!-- Model dropdown -->
+      <div class="dropdown-group">
+        <label for="modelSelect">Chat Model:</label>
+        <select id="modelSelect">
+          <option value="gpt-4o" selected>gpt-4o (GPT-4 flagship)</option>
+          <option value="gpt-4o-mini">gpt-4o-mini (fastest)</option>
+          <option value="gpt-5-nano">gpt-5-nano (fast GPT-5)</option>
+          <option value="gpt-5-mini">gpt-5-mini (balanced GPT-5)</option>
+          <option value="gpt-5">gpt-5 (most accurate)</option>
+        </select>
+      </div>
     </div>
     
     <!-- ==================================================================

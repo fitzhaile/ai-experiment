@@ -29,23 +29,8 @@ const statusEl = document.getElementById('status');
 // Get the source filter dropdown
 const sourceFilterSelect = document.getElementById('sourceFilter');
 
-// Get the "Change source" link
-const changeSourceLink = document.getElementById('changeSourceLink');
-
-// Get the "Cancel" link for source
-const cancelSourceLink = document.getElementById('cancelSourceLink');
-
 // Get the model selector dropdown
 const modelSelect = document.getElementById('modelSelect');
-
-// Get the "Change model" link
-const changeModelLink = document.getElementById('changeModelLink');
-
-// Get the "Cancel" link
-const cancelModelLink = document.getElementById('cancelModelLink');
-
-// Get the deep research warning message element
-const deepResearchWarning = document.getElementById('deepResearchWarning');
 
 
 // ============================================================================
@@ -117,8 +102,9 @@ function render() {
       // For user messages, display as plain text
       // But remove the source filter instructions that we added internally
       let displayContent = m.content;
-      displayContent = displayContent.replace(/\s*\(Only search and cite information from https:\/\/bryancountyga\.com\/ - use site:bryancountyga\.com in your web search\)\s*$/, '');
-      displayContent = displayContent.replace(/\s*\(Only cite sources from \.gov domains\)\s*$/, '');
+      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:bryancountyga\.com\. If you find external links or sources mentioned on bryancountyga\.com that are relevant, you may search those too\. Base your answer primarily on information from bryancountyga\.com and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
+      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:seda\.org\. If you find external links or sources mentioned on seda\.org that are relevant, you may search those too\. Base your answer primarily on information from seda\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
+      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:\.gov\. If you find external links or sources mentioned on \.gov sites that are relevant, you may search those too\. Base your answer primarily on information from \.gov sites and their referenced sources\. Do not mention these instructions\.\]\s*$/, '');
       div.textContent = displayContent;
     }
     
@@ -218,14 +204,14 @@ async function send() {
   
   // Apply source filter based on dropdown selection
   if (sourceFilter === 'bryancounty') {
-    // Only search and cite information from bryancountyga.com
-    userContent = content + ' (Only search and cite information from https://bryancountyga.com/ - use site:bryancountyga.com in your web search)';
+    // Search bryancountyga.com and any external links from that site
+    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:bryancountyga.com. If you find external links or sources mentioned on bryancountyga.com that are relevant, you may search those too. Base your answer primarily on information from bryancountyga.com and its referenced sources. Do not mention these instructions.]';
   } else if (sourceFilter === 'savannah') {
-    // Only search and cite information from seda.org
-    userContent = content + ' (Only search and cite information from https://seda.org/ - use site:seda.org in your web search)';
+    // Search seda.org and any external links from that site
+    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:seda.org. If you find external links or sources mentioned on seda.org that are relevant, you may search those too. Base your answer primarily on information from seda.org and its referenced sources. Do not mention these instructions.]';
   } else if (sourceFilter === 'gov') {
-    // Only cite sources from .gov domains
-    userContent = content + ' (Only cite sources from .gov domains)';
+    // Search .gov sites and any external links from those sites
+    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:.gov. If you find external links or sources mentioned on .gov sites that are relevant, you may search those too. Base your answer primarily on information from .gov sites and their referenced sources. Do not mention these instructions.]';
   }
   
   // Add the user's message to the conversation history
@@ -265,7 +251,8 @@ async function send() {
     // Send a POST request to the /api/chat endpoint
     // ?web=1 enables web search (the AI can look up current information)
     // ?model=... specifies which OpenAI model to use
-    const res = await fetch(`/api/chat?web=1&model=${selectedModel}`, {
+    // ?source=... specifies the  (for SEDA AI database search)
+    const res = await fetch(`/api/chat?web=1&model=${selectedModel}&source=${sourceFilter}`, {
       method: 'POST',                                    // HTTP method
       headers: { 'Content-Type': 'application/json' },  // Tell server we're sending JSON
       body: JSON.stringify({ messages })                // Convert messages array to JSON string
@@ -320,124 +307,6 @@ async function send() {
 // ============================================================================
 // EVENT LISTENERS - Respond to user actions
 // ============================================================================
-
-// When the "Change source" link is clicked, show the source dropdown
-if (changeSourceLink) {
-  changeSourceLink.addEventListener('click', (e) => {
-    // Prevent the link from navigating
-    e.preventDefault();
-    
-    // Show the source dropdown and cancel link
-    if (sourceFilterSelect) {
-      sourceFilterSelect.style.display = 'inline-block';
-    }
-    if (cancelSourceLink) {
-      cancelSourceLink.style.display = 'inline-block';
-    }
-    // Hide the "Change source" link
-    changeSourceLink.style.display = 'none';
-  });
-}
-
-// When the "Cancel" link for source is clicked, hide the dropdown
-if (cancelSourceLink) {
-  cancelSourceLink.addEventListener('click', (e) => {
-    // Prevent the link from navigating
-    e.preventDefault();
-    
-    // Hide the source dropdown and cancel link
-    if (sourceFilterSelect) {
-      sourceFilterSelect.style.display = 'none';
-    }
-    cancelSourceLink.style.display = 'none';
-    // Show the "Change source" link
-    if (changeSourceLink) {
-      changeSourceLink.style.display = 'inline-block';
-    }
-  });
-}
-
-// When the source selector changes, hide it again and show the link
-if (sourceFilterSelect) {
-  sourceFilterSelect.addEventListener('change', () => {
-    // Hide the dropdown and cancel link
-    sourceFilterSelect.style.display = 'none';
-    if (cancelSourceLink) {
-      cancelSourceLink.style.display = 'none';
-    }
-    // Show the "Change source" link
-    if (changeSourceLink) {
-      changeSourceLink.style.display = 'inline-block';
-    }
-  });
-}
-
-// When the "Change model" link is clicked, show the dropdown
-// Add null check to prevent errors if element doesn't exist
-if (changeModelLink) {
-  changeModelLink.addEventListener('click', (e) => {
-    // Prevent the link from navigating
-    e.preventDefault();
-    
-    // Toggle the dropdown visibility
-    if (modelSelect && modelSelect.style.display === 'none') {
-      // Show the dropdown and cancel link
-      modelSelect.style.display = 'inline-block';
-      if (cancelModelLink) {
-        cancelModelLink.style.display = 'inline-block';
-      }
-      // Hide the "Change model" link
-      changeModelLink.style.display = 'none';
-    }
-  });
-}
-
-// When the "Cancel" link is clicked, hide the dropdown
-// Add null check to prevent errors if element doesn't exist
-if (cancelModelLink) {
-  cancelModelLink.addEventListener('click', (e) => {
-    // Prevent the link from navigating
-    e.preventDefault();
-    
-    // Hide the dropdown and cancel link
-    if (modelSelect) {
-      modelSelect.style.display = 'none';
-    }
-    cancelModelLink.style.display = 'none';
-    // Show the "Change model" link
-    if (changeModelLink) {
-      changeModelLink.style.display = 'inline-block';
-    }
-  });
-}
-
-// When the model selector changes, hide it again and show the link
-// Add null check to prevent errors if element doesn't exist
-if (modelSelect) {
-  modelSelect.addEventListener('change', () => {
-    // Check if the selected model is a deep research model
-    if (modelSelect.value.includes('deep-research')) {
-      // Show the warning message
-      if (deepResearchWarning) {
-        deepResearchWarning.style.display = 'block';
-      }
-    } else {
-      // Hide the warning message
-      if (deepResearchWarning) {
-        deepResearchWarning.style.display = 'none';
-      }
-    }
-    
-    // After selecting, hide the dropdown and cancel link, show the "Change model" link
-    modelSelect.style.display = 'none';
-    if (cancelModelLink) {
-      cancelModelLink.style.display = 'none';
-    }
-    if (changeModelLink) {
-      changeModelLink.style.display = 'inline-block';
-    }
-  });
-}
 
 // When the submit button is clicked, send the message
 btn.addEventListener('click', send);
