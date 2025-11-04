@@ -220,6 +220,9 @@ async function send() {
   if (sourceFilter === 'bryancounty') {
     // Only search and cite information from bryancountyga.com
     userContent = content + ' (Only search and cite information from https://bryancountyga.com/ - use site:bryancountyga.com in your web search)';
+  } else if (sourceFilter === 'savannah') {
+    // Only search and cite information from seda.org
+    userContent = content + ' (Only search and cite information from https://seda.org/ - use site:seda.org in your web search)';
   } else if (sourceFilter === 'gov') {
     // Only cite sources from .gov domains
     userContent = content + ' (Only cite sources from .gov domains)';
