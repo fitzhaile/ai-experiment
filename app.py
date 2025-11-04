@@ -62,6 +62,15 @@ app = Flask(__name__)
 # This allows the frontend JavaScript to call our API endpoints
 CORS(app)
 
+# Disable caching for development to prevent browser cache issues
+@app.after_request
+def add_header(response):
+    """Add cache control headers to prevent aggressive browser caching during development."""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
 # Create the OpenAI client once when the app starts
 # This client will be reused for all API requests (more efficient than creating it each time)
 # Set a longer timeout (10 minutes) to handle deep research models that take a long time
@@ -91,7 +100,10 @@ def index():
     Returns:
         The rendered HTML page with the chat interface
     """
-    return render_template("index.html")
+    import time
+    # Add a version parameter for cache busting
+    version = str(int(time.time()))
+    return render_template("index.html", v=version)
 
 
 @app.post("/api/chat")
