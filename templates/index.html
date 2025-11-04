@@ -26,7 +26,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
   <!-- Page title (shows in browser tab) -->
-  <title>Eugene the AI Sea Cow</title>
+  <title>Sea Cow Research 🦭</title>
+  
+  <!-- Favicon: The little icon that shows in the browser tab -->
+  <!-- Using an SVG with a sea cow emoji 🦭 -->
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   
   <!-- ================================================================== -->
   <!-- STYLESHEETS - CSS files for styling the page -->
@@ -34,7 +38,8 @@
   
   <!-- Pico CSS: A minimal CSS framework that provides nice default styles -->
   <!-- This is loaded first so our custom styles can override it -->
-  <link rel="stylesheet" href="/static/css/pico.min.css" />
+  <!-- Using the unminified version for easier reading and learning -->
+  <link rel="stylesheet" href="/static/css/pico.css" />
   
   <!-- Custom CSS: Our own styles and overrides for Pico CSS -->
   <!-- This is loaded second so it takes priority over Pico -->
@@ -50,9 +55,45 @@
   <div class="container">
     
     <!-- ==================================================================
-         PAGE TITLE
+         PAGE TITLE & MODEL SELECTOR
          ================================================================== -->
-    <h1>Eugene the AI Sea Cow</h1>
+    <header class="page-header">
+      <div class="logo">🦭</div>
+      <h1>Sea Cow Research</h1>
+      <p class="subtitle">Intelligent research with source filtering and AI-powered insights</p>
+    </header>
+    
+    <!-- Model selector - hidden by default, shows on link click -->
+    <!-- Allows user to choose which OpenAI model to use for the entire chat session -->
+    <div class="model-selector">
+      <!-- Link to show/hide the source filter dropdown -->
+      <a href="#" id="changeSourceLink" class="change-model-link">Change source</a>
+      
+      <!-- Source filter dropdown - hidden by default -->
+      <select id="sourceFilter" style="display: none;">
+        <option value="bryancounty">Bryan County GA</option>
+        <option value="gov">.gov domains</option>
+        <option value="blacktopics">Black/African American topics</option>
+      </select>
+      
+      <!-- Cancel link to hide the source dropdown -->
+      <a href="#" id="cancelSourceLink" class="cancel-model-link" style="display: none;">Cancel</a>
+      
+      <!-- Link to show/hide the model dropdown -->
+      <a href="#" id="changeModelLink" class="change-model-link">Change model</a>
+      
+      <!-- Model dropdown - hidden by default -->
+      <select id="modelSelect" style="display: none;">
+        <option value="gpt-4o" selected>gpt-4o (GPT-4 flagship)</option>
+        <option value="gpt-4o-mini">gpt-4o-mini (fastest)</option>
+        <option value="gpt-5-nano">gpt-5-nano (fast GPT-5)</option>
+        <option value="gpt-5-mini">gpt-5-mini (balanced GPT-5)</option>
+        <option value="gpt-5">gpt-5 (most accurate)</option>
+      </select>
+      
+      <!-- Cancel link to hide the model dropdown -->
+      <a href="#" id="cancelModelLink" class="cancel-model-link" style="display: none;">Cancel</a>
+    </div>
     
     <!-- ==================================================================
          CHAT LOG - Where messages are displayed
@@ -60,6 +101,13 @@
     <!-- This div is empty initially. JavaScript will add messages here. -->
     <!-- The "log" class applies our custom chat log styling. -->
     <div id="log" class="log"></div>
+    
+    <!-- ==================================================================
+         STATUS MESSAGE - Shows "Swimming for your answers..." while waiting
+         ================================================================== -->
+    <!-- This div is empty initially. JavaScript will add text when loading. -->
+    <!-- aria-live="polite" tells screen readers to announce changes -->
+    <div id="status" class="status" aria-live="polite"></div>
     
     <!-- ==================================================================
          INPUT ROW - Text input, checkbox, and submit button
@@ -74,32 +122,14 @@
       <input 
         id="prompt" 
         type="text" 
-        placeholder="Ask me anything, you silly human." 
+        placeholder="Ask me anything... I'm all ears (and flippers) 🦭" 
       />
-      
-      <!-- Checkbox wrapper for the ".gov only" option -->
-      <div class="checkbox-wrapper">
-        <!-- Checkbox input -->
-        <!-- When checked, the AI will only cite sources from .gov domains -->
-        <input type="checkbox" id="govOnly" />
-        
-        <!-- Label for the checkbox (clicking it also toggles the checkbox) -->
-        <!-- for="govOnly" links this label to the checkbox with id="govOnly" -->
-        <label for="govOnly">.gov only</label>
-      </div>
       
       <!-- Submit button -->
       <!-- type="button" prevents form submission (which would reload the page) -->
       <!-- JavaScript will handle the click event instead -->
       <button id="btn" type="button">Submit</button>
     </div>
-    
-    <!-- ==================================================================
-         STATUS MESSAGE - Shows "Looking for your answers..." while waiting
-         ================================================================== -->
-    <!-- This div is empty initially. JavaScript will add text when loading. -->
-    <!-- aria-live="polite" tells screen readers to announce changes -->
-    <div id="status" class="status" aria-live="polite"></div>
     
   </div>
   
