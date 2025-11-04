@@ -304,7 +304,7 @@ async function send() {
     if (selectedModel.includes('deep-research')) {
       statusEl.textContent = '🔬 Deep research in progress... this may take several minutes…';
     } else {
-      statusEl.textContent = 'Looking for your answers…';
+      statusEl.textContent = 'Swimming for your answers…';
     }
     
     // Disable the button and input field while waiting for a response
