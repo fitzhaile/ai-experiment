@@ -332,60 +332,51 @@ def api_chat():
             return jsonify({"text": text, "web": use_web and bool(search_results) if use_web else False})
         
         # ====================================================================
-        # 3. OPENAI (GPT) MODELS WITH WEB SEARCH
+        # 3. OPENAI (GPT) MODELS WITH BRAVE SEARCH
         # ====================================================================
         
         # Make sure the API key is set
         if not os.getenv("OPENAI_API_KEY"):
             return jsonify({"error": "OPENAI_API_KEY not set"}), 500
         
+        # If web search is enabled, use Brave Search API
+        search_results = []
         if use_web:
-            try:
-                # Build a single text string from all messages in the conversation
-                # This is needed because the Responses API (used for web search)
-                # takes a single input string rather than a messages array
+            # Get the last user message for search query
+            last_user_msg = next((m for m in reversed(messages) if isinstance(m, dict) and m.get("role") == "user"), None)
+            
+            if last_user_msg:
+                search_query = last_user_msg.get("content", "")
+                logging.info(f"Performing Brave Search for GPT: {search_query}")
                 
-                # Use a list comprehension to format each message
-                # Example output: ["System: You are helpful", "User: What is...", "Assistant: ..."]
-                conversation_parts = [
-                    f"{m.get('role', '').capitalize()}: {m.get('content', '')}"
-                    for m in messages
-                    if isinstance(m, dict) and m.get("role") in ("system", "user", "assistant")
-                ]
+                search_results = brave_search(search_query, count=10)
                 
-                # Join all parts with double newlines for readability
-                full_context = "\n\n".join(conversation_parts)
-                
-                # Call OpenAI's Responses API with the web_search tool
-                # This allows the AI to search the web for current information
-                resp = openai_client.responses.create(
-                    model=model,                          # Which AI model to use (from dropdown)
-                    input=full_context,                   # The conversation so far
-                    tools=[{"type": "web_search"}],       # Enable web search tool
-                    tool_choice="auto",                   # Let the AI decide when to search
-                    store=False,                          # Don't store this conversation
-                )
-                
-                # Extract the text from the response and remove extra whitespace
-                text = (resp.output_text or "").strip()
-                
-                # If we got a response, return it with a flag indicating web search was used
-                if text:
-                    return jsonify({"text": text, "web": True})
+                if search_results:
+                    # Add search results to the system message
+                    formatted_results = format_search_results(search_results)
+                    search_instruction = f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible."
                     
-            except Exception as web_err:
-                # If web search fails, log the error and fall through to regular chat
-                logging.warning("Web search failed, falling back to chat.completions: %s", web_err)
-
+                    # Find system message or create one
+                    system_msg_found = False
+                    for msg in messages:
+                        if isinstance(msg, dict) and msg.get("role") == "system":
+                            msg["content"] += search_instruction
+                            system_msg_found = True
+                            break
+                    
+                    # If no system message exists, add one at the beginning
+                    if not system_msg_found:
+                        messages.insert(0, {"role": "system", "content": search_instruction.strip()})
+        
         # ====================================================================
-        # 4. STANDARD OPENAI CHAT MODE (NO WEB SEARCH)
+        # 4. STANDARD OPENAI CHAT MODE (WITH OR WITHOUT SEARCH RESULTS)
         # ====================================================================
         
-        # Use the standard Chat Completions API (no web search)
-        # This is faster and cheaper but doesn't have access to current information
+        # Use the standard Chat Completions API
+        # If search results were found, they're now in the messages
         chat = openai_client.chat.completions.create(
             model=model,        # Which AI model to use (from dropdown)
-            messages=messages   # The conversation history
+            messages=messages   # The conversation history (with search results if available)
         )
         
         # Extract the AI's response text from the API response
@@ -394,7 +385,7 @@ def api_chat():
         text = (chat.choices[0].message.content or "").strip()
         
         # Return the response as JSON
-        return jsonify({"text": text})
+        return jsonify({"text": text, "web": use_web and bool(search_results)})
         
     except Exception as e:
         # If anything goes wrong, log the full error with stack trace
