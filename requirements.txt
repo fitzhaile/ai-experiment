@@ -5,6 +5,10 @@ flask-cors==4.0.1
 python-dotenv==1.0.1
 # OpenAI SDK
 openai==1.52.2
+# Anthropic SDK for Claude models
+anthropic==0.39.0
+# HTTP library for Brave Search API
+requests==2.32.3
 # Production WSGI server (Render uses this)
 gunicorn==23.0.0
 # HTTP transport pinned for compatibility with OpenAI SDK

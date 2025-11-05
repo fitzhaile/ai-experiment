@@ -25,6 +25,13 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS  # Allows cross-origin requests
 
+# Standard Python libraries - import these FIRST
+import logging  # For logging messages to console
+import os       # For reading environment variables
+from pathlib import Path  # For working with file paths
+import requests  # For making HTTP requests to Brave Search API
+import json      # For parsing JSON responses
+
 # OpenAI API client
 from openai import OpenAI
 
@@ -35,13 +42,6 @@ try:
 except ImportError:
     ANTHROPIC_AVAILABLE = False
     logging.warning("anthropic package not installed. Install with: pip install anthropic")
-
-# Standard Python libraries
-import logging  # For logging messages to console
-import os       # For reading environment variables
-from pathlib import Path  # For working with file paths
-import requests  # For making HTTP requests to Brave Search API
-import json      # For parsing JSON responses
 
 
 # ============================================================================

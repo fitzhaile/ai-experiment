@@ -1,8 +1,8 @@
-# Render service definition for deploying this Flask app.
+# Render service definition for deploying Sea Cow AI Flask app.
 
 services:
   - type: web
-    name: ai-experiments
+    name: sea-cow-ai
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -11,13 +11,18 @@ services:
     startCommand: gunicorn app:app
 
     envVars:
+      # OpenAI API Key (required for GPT models)
       - key: OPENAI_API_KEY
-        # Set this in Render Dashboard → Environment. `sync: false` means
-        # the value is managed in Render (not checked into git).
         sync: false
-
-      # Optional: lock model or project id in production
-      # - key: OPENAI_MODEL
-      #   value: gpt-5-mini
-      # - key: OPENAI_PROJECT
-      #   value: your-project-id
+      
+      # Anthropic API Key (required for Claude models)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      
+      # Brave Search API Key (required for Claude web search)
+      - key: BRAVE_API_KEY
+        sync: false
+      
+      # Flask will bind to PORT automatically on Render
+      - key: PORT
+        value: 10000
