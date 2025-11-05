@@ -270,6 +270,9 @@ def api_chat():
         # This allows the user to select which model to use via the dropdown
         model = request.args.get("model", MODEL)
         
+        # Get the data source filter (for site-specific searches)
+        source = request.args.get("source", "")
+        
         # Check if web search is enabled via the ?web=1 query parameter
         use_web = request.args.get("web") == "1"
         
@@ -303,7 +306,18 @@ def api_chat():
                 last_user_msg = next((m for m in reversed(claude_messages) if m["role"] == "user"), None)
                 
                 if last_user_msg:
-                    search_query = last_user_msg["content"]
+                    # Extract clean query (remove any [INSTRUCTIONS: ...] added by frontend)
+                    raw_query = last_user_msg["content"]
+                    search_query = raw_query.split('[INSTRUCTIONS:')[0].strip()
+                    
+                    # Add site: filter based on source parameter
+                    if source == "bryancounty":
+                        search_query = f"site:bryancountyga.com {search_query}"
+                    elif source == "savannah":
+                        search_query = f"site:seda.org {search_query}"
+                    elif source == "gov":
+                        search_query = f"site:.gov {search_query}"
+                    
                     logging.info(f"Performing Brave Search for Claude: {search_query}")
                     
                     search_results = brave_search(search_query, count=10)
@@ -346,7 +360,18 @@ def api_chat():
             last_user_msg = next((m for m in reversed(messages) if isinstance(m, dict) and m.get("role") == "user"), None)
             
             if last_user_msg:
-                search_query = last_user_msg.get("content", "")
+                # Extract clean query (remove any [INSTRUCTIONS: ...] added by frontend)
+                raw_query = last_user_msg.get("content", "")
+                search_query = raw_query.split('[INSTRUCTIONS:')[0].strip()
+                
+                # Add site: filter based on source parameter
+                if source == "bryancounty":
+                    search_query = f"site:bryancountyga.com {search_query}"
+                elif source == "savannah":
+                    search_query = f"site:seda.org {search_query}"
+                elif source == "gov":
+                    search_query = f"site:.gov {search_query}"
+                
                 logging.info(f"Performing Brave Search for GPT: {search_query}")
                 
                 search_results = brave_search(search_query, count=10)
