@@ -32,8 +32,8 @@
   /* Border radius for rounded corners on buttons, inputs, etc. */
   /* Smaller values = sharper corners, larger values = rounder corners */
   --pico-border-radius: 0.25rem;
-  --border-radius-card: 0.25rem; /* For containers, cards, and chat area */
-  --border-radius-pill: 1.5rem;   /* For pill-shaped elements (buttons, inputs, bubbles) */
+  --border-radius-card: 0.5rem; /* For containers, cards, and chat area */
+  --border-radius-pill: 0.5rem;   /* For pill-shaped elements (buttons, inputs, bubbles) */
   
   /* Professional color palette with ocean accents */
   --primary-color: #0f172a;
@@ -196,12 +196,21 @@ body {
   }
   
   .dropdown-group label {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
   
   .dropdown-group select {
     width: 100%;
     min-width: 0;
+    /* Larger font for mobile dropdown */
+    font-size: 1rem;
+    padding: 0.625rem 1rem;
+  }
+  
+  /* Make dropdown options larger on mobile */
+  .dropdown-group select option {
+    font-size: 1rem;
+    padding: 0.5rem;
   }
 }
 
