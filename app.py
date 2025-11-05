@@ -28,10 +28,20 @@ from flask_cors import CORS  # Allows cross-origin requests
 # OpenAI API client
 from openai import OpenAI
 
+# Anthropic API client for Claude models
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+    logging.warning("anthropic package not installed. Install with: pip install anthropic")
+
 # Standard Python libraries
 import logging  # For logging messages to console
 import os       # For reading environment variables
 from pathlib import Path  # For working with file paths
+import requests  # For making HTTP requests to Brave Search API
+import json      # For parsing JSON responses
 
 
 # ============================================================================
@@ -54,6 +64,18 @@ if os.getenv("OPENAI_API_KEY"):
 else:
     # Warn if the API key is missing (the app won't work without it)
     logging.warning("OPENAI_API_KEY not set")
+
+# Check if the Anthropic API key is set (for Claude models)
+if os.getenv("ANTHROPIC_API_KEY"):
+    logging.info("ANTHROPIC_API_KEY detected: %s***", (os.getenv("ANTHROPIC_API_KEY") or "")[:7])
+else:
+    logging.warning("ANTHROPIC_API_KEY not set (Claude models will not work)")
+
+# Check if Brave Search API key is set (for Claude web search)
+if os.getenv("BRAVE_API_KEY"):
+    logging.info("BRAVE_API_KEY detected: %s***", (os.getenv("BRAVE_API_KEY") or "")[:7])
+else:
+    logging.warning("BRAVE_API_KEY not set (Claude web search will not work)")
 
 # Initialize the Flask web application
 app = Flask(__name__)
@@ -79,10 +101,103 @@ openai_client = OpenAI(
     timeout=600.0  # 10 minutes timeout for deep research models
 )
 
+# Create the Anthropic client for Claude models (if available)
+anthropic_client = None
+if ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
+    anthropic_client = Anthropic(
+        api_key=os.getenv("ANTHROPIC_API_KEY"),
+        timeout=600.0  # 10 minutes timeout
+    )
+
 # The AI model we'll use for all requests (default fallback)
 # gpt-4o is the GPT-4 flagship model - balanced performance and quality
 # This is used when no model is specified in the API request
 MODEL = "gpt-4o"
+
+# Claude model names mapping
+CLAUDE_MODELS = {
+    "claude-3-5-sonnet-20241022",
+    "claude-3-5-sonnet-latest",
+    "claude-3-opus-latest",
+    "claude-3-sonnet-20240229",
+    "claude-3-haiku-20240307"
+}
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def brave_search(query, count=10):
+    """
+    Search the web using Brave Search API.
+    
+    Args:
+        query: The search query string
+        count: Number of results to return (default 10)
+    
+    Returns:
+        List of search results with title, url, and description
+    """
+    api_key = os.getenv("BRAVE_API_KEY")
+    if not api_key:
+        logging.warning("BRAVE_API_KEY not set, cannot perform web search")
+        return []
+    
+    try:
+        url = "https://api.search.brave.com/res/v1/web/search"
+        headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "X-Subscription-Token": api_key
+        }
+        params = {
+            "q": query,
+            "count": count
+        }
+        
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        results = []
+        
+        # Extract web results
+        for item in data.get("web", {}).get("results", []):
+            results.append({
+                "title": item.get("title", ""),
+                "url": item.get("url", ""),
+                "description": item.get("description", "")
+            })
+        
+        logging.info(f"Brave Search returned {len(results)} results for: {query}")
+        return results
+        
+    except Exception as e:
+        logging.error(f"Brave Search error: {e}")
+        return []
+
+
+def format_search_results(results):
+    """
+    Format search results into a readable string for the AI.
+    
+    Args:
+        results: List of search result dictionaries
+    
+    Returns:
+        Formatted string with search results
+    """
+    if not results:
+        return "No search results found."
+    
+    formatted = "Here are the web search results:\n\n"
+    for i, result in enumerate(results, 1):
+        formatted += f"{i}. {result['title']}\n"
+        formatted += f"   URL: {result['url']}\n"
+        formatted += f"   {result['description']}\n\n"
+    
+    return formatted
 
 
 # ============================================================================
@@ -115,6 +230,8 @@ def api_chat():
     and returns the AI's response. It can optionally use web search if
     the user has enabled it via the ?web=1 query parameter.
     
+    Supports both OpenAI (GPT) and Anthropic (Claude) models.
+    
     Expected POST data (JSON):
         {
             "messages": [
@@ -127,7 +244,7 @@ def api_chat():
     
     Query parameters:
         web=1 : Enable web search for live information
-        model=<model_name> : Specify which OpenAI model to use (optional)
+        model=<model_name> : Specify which AI model to use (optional)
     
     Returns (JSON):
         Success: {"text": "The AI's response text", "web": true/false}
@@ -138,10 +255,6 @@ def api_chat():
         # 1. VALIDATE REQUEST
         # ====================================================================
         
-        # Make sure the API key is set (double-check even though we checked at startup)
-        if not os.getenv("OPENAI_API_KEY"):
-            return jsonify({"error": "OPENAI_API_KEY not set"}), 500
-
         # Get the JSON data from the request body
         # silent=True means don't crash if the JSON is invalid, just return None
         data = request.get_json(silent=True) or {}
@@ -156,14 +269,75 @@ def api_chat():
         # Get the model from query parameter, or use the default
         # This allows the user to select which model to use via the dropdown
         model = request.args.get("model", MODEL)
-
-        # ====================================================================
-        # 2. WEB SEARCH MODE (OPTIONAL)
-        # ====================================================================
         
         # Check if web search is enabled via the ?web=1 query parameter
-        # Example: POST /api/chat?web=1
         use_web = request.args.get("web") == "1"
+        
+        # ====================================================================
+        # 2. CLAUDE (ANTHROPIC) MODELS
+        # ====================================================================
+        
+        if model in CLAUDE_MODELS:
+            # Check if Anthropic client is available
+            if not anthropic_client:
+                return jsonify({"error": "Claude models not available. Install anthropic package and set ANTHROPIC_API_KEY"}), 500
+            
+            # Separate system messages from conversation
+            system_content = ""
+            claude_messages = []
+            
+            for msg in messages:
+                if not isinstance(msg, dict):
+                    continue
+                role = msg.get("role")
+                content = msg.get("content", "")
+                
+                if role == "system":
+                    system_content += content + "\n\n"
+                elif role in ("user", "assistant"):
+                    claude_messages.append({"role": role, "content": content})
+            
+            # If web search is enabled, perform search and add results
+            if use_web and claude_messages:
+                # Get the last user message for search query
+                last_user_msg = next((m for m in reversed(claude_messages) if m["role"] == "user"), None)
+                
+                if last_user_msg:
+                    search_query = last_user_msg["content"]
+                    logging.info(f"Performing Brave Search for Claude: {search_query}")
+                    
+                    search_results = brave_search(search_query, count=10)
+                    
+                    if search_results:
+                        # Add search results to system prompt
+                        formatted_results = format_search_results(search_results)
+                        system_content += f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible."
+            
+            # Call Claude API
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=4096,
+                system=system_content.strip() if system_content else None,
+                messages=claude_messages
+            )
+            
+            # Extract text from response
+            text = ""
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    text += block.text
+            
+            text = text.strip()
+            
+            return jsonify({"text": text, "web": use_web and bool(search_results) if use_web else False})
+        
+        # ====================================================================
+        # 3. OPENAI (GPT) MODELS WITH WEB SEARCH
+        # ====================================================================
+        
+        # Make sure the API key is set
+        if not os.getenv("OPENAI_API_KEY"):
+            return jsonify({"error": "OPENAI_API_KEY not set"}), 500
         
         if use_web:
             try:
@@ -204,7 +378,7 @@ def api_chat():
                 logging.warning("Web search failed, falling back to chat.completions: %s", web_err)
 
         # ====================================================================
-        # 3. STANDARD CHAT MODE (NO WEB SEARCH)
+        # 4. STANDARD OPENAI CHAT MODE (NO WEB SEARCH)
         # ====================================================================
         
         # Use the standard Chat Completions API (no web search)
