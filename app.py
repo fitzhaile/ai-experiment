@@ -325,12 +325,13 @@ def api_chat():
                     if search_results:
                         # Add search results to system prompt
                         formatted_results = format_search_results(search_results)
-                        system_content += f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible."
+                        system_content += f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible. When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity."
             
             # Call Claude API
             response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=4096,
+                temperature=0.5,  # Balanced consistency and naturalness
                 system=system_content.strip() if system_content else None,
                 messages=claude_messages
             )
@@ -379,7 +380,7 @@ def api_chat():
                 if search_results:
                     # Add search results to the system message
                     formatted_results = format_search_results(search_results)
-                    search_instruction = f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible."
+                    search_instruction = f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible. When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity."
                     
                     # Find system message or create one
                     system_msg_found = False
@@ -401,7 +402,8 @@ def api_chat():
         # If search results were found, they're now in the messages
         chat = openai_client.chat.completions.create(
             model=model,        # Which AI model to use (from dropdown)
-            messages=messages   # The conversation history (with search results if available)
+            messages=messages,  # The conversation history (with search results if available)
+            temperature=0.5     # Balanced consistency and naturalness
         )
         
         # Extract the AI's response text from the API response
