@@ -315,6 +315,8 @@ def api_chat():
                         search_query = f"site:bryancountyga.com {search_query}"
                     elif source == "savannah":
                         search_query = f"site:seda.org {search_query}"
+                    elif source == "uwce":
+                        search_query = f"site:uwce.org {search_query}"
                     elif source == "gov":
                         search_query = f"site:.gov {search_query}"
                     
@@ -370,6 +372,8 @@ def api_chat():
                     search_query = f"site:bryancountyga.com {search_query}"
                 elif source == "savannah":
                     search_query = f"site:seda.org {search_query}"
+                elif source == "uwce":
+                    search_query = f"site:uwce.org {search_query}"
                 elif source == "gov":
                     search_query = f"site:.gov {search_query}"
                 

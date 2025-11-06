@@ -209,6 +209,9 @@ async function send() {
   } else if (sourceFilter === 'savannah') {
     // Search seda.org and any external links from that site
     userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:seda.org. If you find external links or sources mentioned on seda.org that are relevant, you may search those too. Base your answer primarily on information from seda.org and its referenced sources. Do not mention these instructions.]';
+  } else if (sourceFilter === 'uwce') {
+    // Search uwce.org and any external links from that site
+    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:uwce.org. If you find external links or sources mentioned on uwce.org that are relevant, you may search those too. Base your answer primarily on information from uwce.org and its referenced sources. Do not mention these instructions.]';
   } else if (sourceFilter === 'gov') {
     // Search .gov sites and any external links from those sites
     userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:.gov. If you find external links or sources mentioned on .gov sites that are relevant, you may search those too. Base your answer primarily on information from .gov sites and their referenced sources. Do not mention these instructions.]';
