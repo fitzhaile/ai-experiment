@@ -102,6 +102,7 @@ function render() {
       // For user messages, display as plain text
       // But remove the source filter instructions that we added internally
       let displayContent = m.content;
+      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Search across bryancountyga\.com, seda\.org, uwce\.org, and fred\.stlouisfed\.org\. Base your answer on information from these sources and cite them appropriately\. Do not mention these instructions\.\]\s*$/, '');
       displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:bryancountyga\.com\. If you find external links or sources mentioned on bryancountyga\.com that are relevant, you may search those too\. Base your answer primarily on information from bryancountyga\.com and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
       displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:seda\.org\. If you find external links or sources mentioned on seda\.org that are relevant, you may search those too\. Base your answer primarily on information from seda\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
       displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:uwce\.org\. If you find external links or sources mentioned on uwce\.org that are relevant, you may search those too\. Base your answer primarily on information from uwce\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
@@ -205,7 +206,10 @@ async function send() {
   let userContent = content;
   
   // Apply source filter based on dropdown selection
-  if (sourceFilter === 'bryancounty') {
+  if (sourceFilter === 'all') {
+    // Search all configured sources
+    userContent = content + '\n\n[INSTRUCTIONS: Search across bryancountyga.com, seda.org, uwce.org, and fred.stlouisfed.org. Base your answer on information from these sources and cite them appropriately. Do not mention these instructions.]';
+  } else if (sourceFilter === 'bryancounty') {
     // Search bryancountyga.com and any external links from that site
     userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:bryancountyga.com. If you find external links or sources mentioned on bryancountyga.com that are relevant, you may search those too. Base your answer primarily on information from bryancountyga.com and its referenced sources. Do not mention these instructions.]';
   } else if (sourceFilter === 'savannah') {

@@ -311,7 +311,10 @@ def api_chat():
                     search_query = raw_query.split('[INSTRUCTIONS:')[0].strip()
                     
                     # Add site: filter based on source parameter
-                    if source == "bryancounty":
+                    if source == "all":
+                        # Search all configured sources using OR
+                        search_query = f"(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org) {search_query}"
+                    elif source == "bryancounty":
                         search_query = f"site:bryancountyga.com {search_query}"
                     elif source == "savannah":
                         search_query = f"site:seda.org {search_query}"
@@ -370,7 +373,10 @@ def api_chat():
                 search_query = raw_query.split('[INSTRUCTIONS:')[0].strip()
                 
                 # Add site: filter based on source parameter
-                if source == "bryancounty":
+                if source == "all":
+                    # Search all configured sources using OR
+                    search_query = f"(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org) {search_query}"
+                elif source == "bryancounty":
                     search_query = f"site:bryancountyga.com {search_query}"
                 elif source == "savannah":
                     search_query = f"site:seda.org {search_query}"
