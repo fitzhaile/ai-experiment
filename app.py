@@ -114,12 +114,10 @@ if ANTHROPIC_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
 # This is used when no model is specified in the API request
 MODEL = "gpt-4o"
 
-# Claude model names mapping
+# Claude model names mapping (only models that work with current API access)
 CLAUDE_MODELS = {
-    "claude-3-5-sonnet-20240620",
-    "claude-3-opus-20240229",
-    "claude-3-sonnet-20240229",
-    "claude-3-haiku-20240307"
+    "claude-3-5-haiku-20241022",  # Claude 3.5 Haiku (latest, fastest)
+    "claude-3-haiku-20240307"     # Claude 3 Haiku (stable)
 }
 
 
