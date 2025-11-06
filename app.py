@@ -29,6 +29,7 @@ from flask_cors import CORS  # Allows cross-origin requests
 import logging  # For logging messages to console
 import os       # For reading environment variables
 from pathlib import Path  # For working with file paths
+import re       # For regular expression pattern matching
 import requests  # For making HTTP requests to Brave Search API
 import json      # For parsing JSON responses
 
@@ -124,6 +125,27 @@ CLAUDE_MODELS = {
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
+def substitute_pronouns(query, source):
+    """
+    Substitute pronouns in the query based on the data source.
+    Makes searches more specific to the organization/region.
+    """
+    if source == "bryancounty":
+        # Replace "your" with "Bryan County's" and "you" with "Bryan County"
+        query = re.sub(r'\byour\b', "Bryan County's", query, flags=re.IGNORECASE)
+        query = re.sub(r'\byou\b', "Bryan County", query, flags=re.IGNORECASE)
+    elif source == "savannah":
+        # Replace "your" with "Chatham County's" and "you" with "Chatham County"
+        query = re.sub(r'\byour\b', "Chatham County's", query, flags=re.IGNORECASE)
+        query = re.sub(r'\byou\b', "Chatham County", query, flags=re.IGNORECASE)
+    elif source == "uwce":
+        # Replace "your" with "United Way of the Coastal Empire's" and "you" with "United Way of the Coastal Empire"
+        query = re.sub(r'\byour\b', "United Way of the Coastal Empire's", query, flags=re.IGNORECASE)
+        query = re.sub(r'\byou\b', "United Way of the Coastal Empire", query, flags=re.IGNORECASE)
+    
+    return query
+
 
 def brave_search(query, count=10):
     """
@@ -307,6 +329,9 @@ def api_chat():
                     raw_query = last_user_msg["content"]
                     search_query = raw_query.split('[INSTRUCTIONS:')[0].strip()
                     
+                    # Substitute pronouns based on data source
+                    search_query = substitute_pronouns(search_query, source)
+                    
                     # Add site: filter based on source parameter
                     if source == "all":
                         # Search all configured sources using OR
@@ -368,6 +393,9 @@ def api_chat():
                 # Extract clean query (remove any [INSTRUCTIONS: ...] added by frontend)
                 raw_query = last_user_msg.get("content", "")
                 search_query = raw_query.split('[INSTRUCTIONS:')[0].strip()
+                
+                # Substitute pronouns based on data source
+                search_query = substitute_pronouns(search_query, source)
                 
                 # Add site: filter based on source parameter
                 if source == "all":
