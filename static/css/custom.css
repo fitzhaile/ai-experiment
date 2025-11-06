@@ -347,6 +347,30 @@ body {
   outline: none;
 }
 
+/* Mobile responsive layout - stack input and button vertically */
+@media (max-width: 768px) {
+  .row {
+    /* Stack vertically on mobile */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .row input[type="text"] {
+    /* Full width on mobile */
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.875rem 1.25rem;
+  }
+  
+  .row button {
+    /* Full width on mobile */
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
 
 /* ============================================================================
    5. CHECKBOX STYLES
