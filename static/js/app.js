@@ -104,6 +104,7 @@ function render() {
       let displayContent = m.content;
       displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:bryancountyga\.com\. If you find external links or sources mentioned on bryancountyga\.com that are relevant, you may search those too\. Base your answer primarily on information from bryancountyga\.com and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
       displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:seda\.org\. If you find external links or sources mentioned on seda\.org that are relevant, you may search those too\. Base your answer primarily on information from seda\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
+      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:uwce\.org\. If you find external links or sources mentioned on uwce\.org that are relevant, you may search those too\. Base your answer primarily on information from uwce\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
       displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:\.gov\. If you find external links or sources mentioned on \.gov sites that are relevant, you may search those too\. Base your answer primarily on information from \.gov sites and their referenced sources\. Do not mention these instructions\.\]\s*$/, '');
       div.textContent = displayContent;
     }
