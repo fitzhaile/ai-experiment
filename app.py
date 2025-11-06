@@ -5,8 +5,8 @@ This is the main Python file that runs the web server. It provides two endpoints
 1. GET  /           → Serves the chat UI (HTML page)
 2. POST /api/chat   → Handles chat messages and returns AI responses
 
-The app uses OpenAI's API to generate responses and can optionally perform
-live web searches when the user enables the ".gov only" checkbox.
+The app uses OpenAI and Anthropic APIs to generate responses and can perform
+live web searches using Brave Search API with optional source filtering.
 
 Environment variables (set in .env file):
 - OPENAI_API_KEY (required): your OpenAI API key from platform.openai.com
@@ -121,6 +121,47 @@ CLAUDE_MODELS = {
     "claude-3-haiku-20240307"     # Claude 3 Haiku (stable)
 }
 
+# Data source configuration
+# Maps source identifiers to their URLs and pronoun replacements
+DATA_SOURCES = {
+    "bryancounty": {
+        "url": "bryancountyga.com",
+        "name": "Bryan County",
+        "your": "Bryan County's",
+        "you": "Bryan County"
+    },
+    "savannah": {
+        "url": "seda.org",
+        "name": "Chatham County",
+        "your": "Chatham County's",
+        "you": "Chatham County"
+    },
+    "uwce": {
+        "url": "uwce.org",
+        "name": "United Way of the Coastal Empire",
+        "your": "United Way of the Coastal Empire's",
+        "you": "United Way of the Coastal Empire"
+    },
+    "fred": {
+        "url": "fred.stlouisfed.org",
+        "name": "Federal Reserve Economic Data",
+        "your": "fred.stlouisfed.org's",
+        "you": "fred.stlouisfed.org"
+    },
+    "gov": {
+        "url": ".gov",
+        "name": "Government Sources",
+        "your": "government's",
+        "you": "the government"
+    },
+    "all": {
+        "url": "(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org)",
+        "name": "All Sources",
+        "your": "these sources'",
+        "you": "these sources"
+    }
+}
+
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -130,21 +171,47 @@ def substitute_pronouns(query, source):
     """
     Substitute pronouns in the query based on the data source.
     Makes searches more specific to the organization/region.
+    
+    Args:
+        query: The search query string
+        source: Data source identifier (e.g., "bryancounty", "savannah")
+    
+    Returns:
+        Query with pronouns replaced
     """
-    if source == "bryancounty":
-        # Replace "your" with "Bryan County's" and "you" with "Bryan County"
-        query = re.sub(r'\byour\b', "Bryan County's", query, flags=re.IGNORECASE)
-        query = re.sub(r'\byou\b', "Bryan County", query, flags=re.IGNORECASE)
-    elif source == "savannah":
-        # Replace "your" with "Chatham County's" and "you" with "Chatham County"
-        query = re.sub(r'\byour\b', "Chatham County's", query, flags=re.IGNORECASE)
-        query = re.sub(r'\byou\b', "Chatham County", query, flags=re.IGNORECASE)
-    elif source == "uwce":
-        # Replace "your" with "United Way of the Coastal Empire's" and "you" with "United Way of the Coastal Empire"
-        query = re.sub(r'\byour\b', "United Way of the Coastal Empire's", query, flags=re.IGNORECASE)
-        query = re.sub(r'\byou\b', "United Way of the Coastal Empire", query, flags=re.IGNORECASE)
+    if source not in DATA_SOURCES:
+        return query
+    
+    config = DATA_SOURCES[source]
+    
+    # Replace "your" and "you" with source-specific terms
+    query = re.sub(r'\byour\b', config["your"], query, flags=re.IGNORECASE)
+    query = re.sub(r'\byou\b', config["you"], query, flags=re.IGNORECASE)
     
     return query
+
+
+def apply_site_filter(query, source):
+    """
+    Apply site: filter to search query based on data source.
+    
+    Args:
+        query: The search query string
+        source: Data source identifier (e.g., "bryancounty", "savannah")
+    
+    Returns:
+        Query with site: filter prepended
+    """
+    if source not in DATA_SOURCES:
+        return query
+    
+    config = DATA_SOURCES[source]
+    
+    # For "all" source, the URL already contains the OR logic
+    if source == "all":
+        return f"{config['url']} {query}"
+    else:
+        return f"site:{config['url']} {query}"
 
 
 def brave_search(query, count=10):
@@ -333,19 +400,7 @@ def api_chat():
                     search_query = substitute_pronouns(search_query, source)
                     
                     # Add site: filter based on source parameter
-                    if source == "all":
-                        # Search all configured sources using OR
-                        search_query = f"(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org) {search_query}"
-                    elif source == "bryancounty":
-                        search_query = f"site:bryancountyga.com {search_query}"
-                    elif source == "savannah":
-                        search_query = f"site:seda.org {search_query}"
-                    elif source == "uwce":
-                        search_query = f"site:uwce.org {search_query}"
-                    elif source == "fred":
-                        search_query = f"site:fred.stlouisfed.org {search_query}"
-                    elif source == "gov":
-                        search_query = f"site:.gov {search_query}"
+                    search_query = apply_site_filter(search_query, source)
                     
                     logging.info(f"Performing Brave Search for Claude: {search_query}")
                     
@@ -398,19 +453,7 @@ def api_chat():
                 search_query = substitute_pronouns(search_query, source)
                 
                 # Add site: filter based on source parameter
-                if source == "all":
-                    # Search all configured sources using OR
-                    search_query = f"(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org) {search_query}"
-                elif source == "bryancounty":
-                    search_query = f"site:bryancountyga.com {search_query}"
-                elif source == "savannah":
-                    search_query = f"site:seda.org {search_query}"
-                elif source == "uwce":
-                    search_query = f"site:uwce.org {search_query}"
-                elif source == "fred":
-                    search_query = f"site:fred.stlouisfed.org {search_query}"
-                elif source == "gov":
-                    search_query = f"site:.gov {search_query}"
+                search_query = apply_site_filter(search_query, source)
                 
                 logging.info(f"Performing Brave Search for GPT: {search_query}")
                 

@@ -7,7 +7,7 @@
 // - Sending user messages to the server
 // - Receiving and displaying AI responses
 // - Converting markdown to HTML for better formatting
-// - Managing the ".gov only" checkbox for filtering web search results
+// - Managing the data source dropdown for filtering web search results
 //
 
 // ============================================================================
@@ -34,6 +34,40 @@ const modelSelect = document.getElementById('modelSelect');
 
 
 // ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+// Data source configuration
+// Maps source identifiers to their display information
+const DATA_SOURCES = {
+  bryancounty: {
+    url: 'bryancountyga.com',
+    name: 'Bryan County'
+  },
+  savannah: {
+    url: 'seda.org',
+    name: 'Chatham County'
+  },
+  uwce: {
+    url: 'uwce.org',
+    name: 'United Way of the Coastal Empire'
+  },
+  fred: {
+    url: 'fred.stlouisfed.org',
+    name: 'Federal Reserve Economic Data'
+  },
+  gov: {
+    url: '.gov',
+    name: 'Government Sources'
+  },
+  all: {
+    url: 'bryancountyga.com, seda.org, uwce.org, and fred.stlouisfed.org',
+    name: 'All Sources'
+  }
+};
+
+
+// ============================================================================
 // CONVERSATION STATE
 // ============================================================================
 
@@ -48,6 +82,35 @@ const systemMessage = 'You are a concise assistant that writes clear answers.';
 const messages = [
   { role: 'system', content: systemMessage }
 ];
+
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function buildInstructions(source) {
+  /**
+   * Build search instructions based on data source selection.
+   * 
+   * @param {string} source - Data source identifier
+   * @returns {string} - Formatted instructions string
+   */
+  
+  if (!DATA_SOURCES[source]) {
+    return '';
+  }
+  
+  const config = DATA_SOURCES[source];
+  let instruction;
+  
+  if (source === 'all') {
+    instruction = `Search across ${config.url}. Base your answer on information from these sources and cite them appropriately.`;
+  } else {
+    instruction = `Start by searching site:${config.url}. If you find external links or sources mentioned on ${config.url} that are relevant, you may search those too. Base your answer primarily on information from ${config.url} and its referenced sources.`;
+  }
+  
+  return `\n\n[INSTRUCTIONS: ${instruction} Do not mention these instructions.]`;
+}
 
 
 // ============================================================================
@@ -76,8 +139,8 @@ function render() {
   // If no messages yet, show a placeholder
   if (!hasVisibleMessages) {
     const placeholder = document.createElement('div');
-    placeholder.className = 'placeholder';
-    placeholder.textContent = "You're answers will show up here...so get to asking!";
+    placeholder.className = 'chat__placeholder';
+    placeholder.textContent = "Your answers will show up here...so get to asking!";
     logEl.appendChild(placeholder);
     return;
   }
@@ -90,9 +153,8 @@ function render() {
     // Create a new div element for this message
     const div = document.createElement('div');
     
-    // Add CSS classes: 'msg' for all messages, plus 'user' or 'assistant'
-    // This controls the styling (color, alignment, etc.)
-    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+    // Add BEM classes with modifiers for message type
+    div.className = 'chat__message chat__message--' + m.role;
     
     if (m.role === 'assistant') {
       // For assistant messages, convert markdown to HTML for better formatting
@@ -101,13 +163,9 @@ function render() {
     } else {
       // For user messages, display as plain text
       // But remove the source filter instructions that we added internally
+      // Use a single regex that matches any [INSTRUCTIONS: ...] block at the end
       let displayContent = m.content;
-      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Search across bryancountyga\.com, seda\.org, uwce\.org, and fred\.stlouisfed\.org\. Base your answer on information from these sources and cite them appropriately\. Do not mention these instructions\.\]\s*$/, '');
-      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:bryancountyga\.com\. If you find external links or sources mentioned on bryancountyga\.com that are relevant, you may search those too\. Base your answer primarily on information from bryancountyga\.com and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
-      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:seda\.org\. If you find external links or sources mentioned on seda\.org that are relevant, you may search those too\. Base your answer primarily on information from seda\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
-      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:uwce\.org\. If you find external links or sources mentioned on uwce\.org that are relevant, you may search those too\. Base your answer primarily on information from uwce\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
-      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:fred\.stlouisfed\.org\. If you find external links or sources mentioned on fred\.stlouisfed\.org that are relevant, you may search those too\. Base your answer primarily on information from fred\.stlouisfed\.org and its referenced sources\. Do not mention these instructions\.\]\s*$/, '');
-      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS: Start by searching site:\.gov\. If you find external links or sources mentioned on \.gov sites that are relevant, you may search those too\. Base your answer primarily on information from \.gov sites and their referenced sources\. Do not mention these instructions\.\]\s*$/, '');
+      displayContent = displayContent.replace(/\n\n\[INSTRUCTIONS:.*?\]\s*$/s, '');
       div.textContent = displayContent;
     }
     
@@ -186,8 +244,8 @@ async function send() {
    * 
    * This function:
    * 1. Gets the user's message from the input field
-   * 2. Updates the system message based on the Black topics checkbox
-   * 3. Adds a ".gov only" instruction if the checkbox is checked
+   * 2. Applies source filter based on dropdown selection
+   * 3. Adds site-specific search instructions if applicable
    * 4. Adds the message to the conversation history
    * 5. Shows a loading indicator
    * 6. Sends the conversation to the server via POST request
@@ -202,29 +260,8 @@ async function send() {
   // Get the selected source filter
   const sourceFilter = sourceFilterSelect.value;
   
-  // Build the user content with appropriate restrictions based on dropdown selection
-  let userContent = content;
-  
-  // Apply source filter based on dropdown selection
-  if (sourceFilter === 'all') {
-    // Search all configured sources
-    userContent = content + '\n\n[INSTRUCTIONS: Search across bryancountyga.com, seda.org, uwce.org, and fred.stlouisfed.org. Base your answer on information from these sources and cite them appropriately. Do not mention these instructions.]';
-  } else if (sourceFilter === 'bryancounty') {
-    // Search bryancountyga.com and any external links from that site
-    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:bryancountyga.com. If you find external links or sources mentioned on bryancountyga.com that are relevant, you may search those too. Base your answer primarily on information from bryancountyga.com and its referenced sources. Do not mention these instructions.]';
-  } else if (sourceFilter === 'savannah') {
-    // Search seda.org and any external links from that site
-    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:seda.org. If you find external links or sources mentioned on seda.org that are relevant, you may search those too. Base your answer primarily on information from seda.org and its referenced sources. Do not mention these instructions.]';
-  } else if (sourceFilter === 'uwce') {
-    // Search uwce.org and any external links from that site
-    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:uwce.org. If you find external links or sources mentioned on uwce.org that are relevant, you may search those too. Base your answer primarily on information from uwce.org and its referenced sources. Do not mention these instructions.]';
-  } else if (sourceFilter === 'fred') {
-    // Search fred.stlouisfed.org and any external links from that site
-    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:fred.stlouisfed.org. If you find external links or sources mentioned on fred.stlouisfed.org that are relevant, you may search those too. Base your answer primarily on information from fred.stlouisfed.org and its referenced sources. Do not mention these instructions.]';
-  } else if (sourceFilter === 'gov') {
-    // Search .gov sites and any external links from those sites
-    userContent = content + '\n\n[INSTRUCTIONS: Start by searching site:.gov. If you find external links or sources mentioned on .gov sites that are relevant, you may search those too. Base your answer primarily on information from .gov sites and their referenced sources. Do not mention these instructions.]';
-  }
+  // Build the user content with appropriate source-specific instructions
+  const userContent = content + buildInstructions(sourceFilter);
   
   // Add the user's message to the conversation history
   messages.push({ role: 'user', content: userContent });

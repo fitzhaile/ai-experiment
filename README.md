@@ -1,13 +1,14 @@
 # Eugene the AI Sea Cow 🦭
 
-A simple, elegant chat interface powered by OpenAI's GPT-5-mini with live web search capability.
+A simple, elegant chat interface powered by OpenAI GPT and Anthropic Claude models with live web search capability.
 
 ## Overview
 
 Eugene is a conversational AI assistant that can:
-- Answer questions using GPT-5-mini (OpenAI's latest mini model)
-- Search the web for current information (using OpenAI's web_search tool)
-- Filter results to only cite .gov sources (optional)
+- Answer questions using multiple AI models (GPT-4o, GPT-4o-mini, Claude 3.5 Haiku)
+- Search the web for current information using Brave Search API
+- Filter results by data source (specific websites or .gov domains)
+- Apply intelligent pronoun substitution for location-specific queries
 - Remember conversation context for natural, multi-turn discussions
 
 ### Architecture
@@ -36,10 +37,11 @@ Eugene is a conversational AI assistant that can:
 └─────────────────────────────────────────────────────────────┘
                              ↕
 ┌─────────────────────────────────────────────────────────────┐
-│                       OPENAI API                             │
+│                     AI SERVICES & APIs                       │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │  • Chat Completions API (standard chat)                │ │
-│  │  • Responses API (web search enabled)                  │ │
+│  │  • OpenAI Chat Completions (GPT models)                │ │
+│  │  • Anthropic Messages API (Claude models)              │ │
+│  │  • Brave Search API (web search with site filters)     │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -49,9 +51,8 @@ Eugene is a conversational AI assistant that can:
 ```
 ai-experiment/
 ├── app.py                      # Main Flask server (backend)
-├── ai-experiment.py            # Standalone test script (optional)
 ├── requirements.txt            # Python dependencies
-├── .env                        # Environment variables (API key)
+├── .env                        # Environment variables (API keys)
 │
 ├── templates/
 │   └── index.html              # Chat UI HTML structure
@@ -63,9 +64,11 @@ ai-experiment/
 │   └── js/
 │       └── app.js              # Frontend JavaScript (chat logic)
 │
-├── backups/                    # Project backups (.tar.gz files)
 ├── Procfile                    # Deployment config for Render
-└── render.yaml                 # Deployment config for Render
+├── render.yaml                 # Deployment config for Render
+├── CLAUDE_SETUP.md             # Claude API setup instructions
+├── RENDER_DEPLOYMENT.md        # Render deployment guide
+└── CODE_REVIEW.md              # Code review and cleanup documentation
 ```
 
 ## Quick Start
@@ -104,10 +107,11 @@ The server will start at: **http://127.0.0.1:8080/**
 ### 4. Use the Chat Interface
 
 1. Open http://127.0.0.1:8080/ in your browser
-2. Type a question in the input field
-3. (Optional) Check ".gov only" to filter web results to government sources
-4. Click "Submit" or press Enter
-5. Eugene will respond with an answer (and search the web if needed)
+2. Select a data source from the dropdown (bryancountyga.com, seda.org, etc.)
+3. Select an AI model (GPT-4o, Claude 3.5 Haiku, etc.)
+4. Type a question in the input field
+5. Click "Submit" or press Enter
+6. Eugene will search the web and respond with an answer
 
 ## How It Works
 
@@ -129,9 +133,11 @@ The server will start at: **http://127.0.0.1:8080/**
    - Manages conversation history
    - Calls OpenAI API
 
-2. **OpenAI Integration**:
-   - **Standard mode**: Uses Chat Completions API (fast, no web access)
-   - **Web search mode**: Uses Responses API with `web_search` tool (can access current information)
+2. **AI Integration**:
+   - **OpenAI models**: GPT-4o, GPT-4o-mini, GPT-4-turbo
+   - **Anthropic models**: Claude 3.5 Haiku, Claude 3 Haiku
+   - **Web search**: Brave Search API with site-specific filtering
+   - **Pronoun substitution**: Automatically replaces "you/your" with location names for better searches
 
 ### Conversation Flow
 
@@ -160,6 +166,8 @@ Set these in your `.env` file:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OPENAI_API_KEY` | **Yes** | - | Your OpenAI API key from platform.openai.com |
+| `ANTHROPIC_API_KEY` | Conditional | - | Your Anthropic API key (required for Claude models) |
+| `BRAVE_API_KEY` | **Yes** | - | Your Brave Search API key for web search |
 | `PORT` | No | 5000 | Port number for the server |
 | `FLASK_DEBUG` | No | 0 | Set to "1" for auto-reload and debug mode (dev only) |
 
@@ -176,17 +184,14 @@ Debug mode enables:
 FLASK_DEBUG=1 PORT=8080 python app.py
 ```
 
-### Testing the OpenAI API
+### Testing the Application
 
-Use `ai-experiment.py` to test API calls independently:
+The app automatically performs web searches for all queries. Test different features:
 
-```bash
-# Activate virtual environment first
-source .venv/bin/activate
-
-# Run the test script
-python ai-experiment.py
-```
+1. **Test different data sources**: Try each dropdown option
+2. **Test different models**: Switch between GPT and Claude models
+3. **Test pronoun substitution**: Try "What is your population?" with Bryan County selected
+4. **Test markdown rendering**: Responses include bold, links, and formatting
 
 ### Making Changes
 
@@ -226,14 +231,14 @@ Another process is using the port. Either:
 
 ### Web search not working
 
-1. Make sure you're using a recent version of the OpenAI Python library:
+1. Make sure you have a valid Brave Search API key set in `.env`:
    ```bash
-   pip install --upgrade openai
+   echo "BRAVE_API_KEY=your-brave-api-key" >> .env
    ```
 
-2. Check that the `.gov only` checkbox is working (it adds instructions to the message)
+2. Check that the data source dropdown is working (it adds site: filters to searches)
 
-3. Look at the server logs for error messages
+3. Look at the server logs for error messages (search for "Brave Search" entries)
 
 ### Chat not displaying properly
 
@@ -258,17 +263,20 @@ Another process is using the port. Either:
 - **`Procfile`**: Tells Render how to start the server
 - **`render.yaml`**: Render deployment configuration
 
-### Optional Files
+### Documentation Files
 
-- **`ai-experiment.py`**: Standalone script for testing OpenAI API calls
-- **`backups/`**: Directory containing project backups
+- **`CLAUDE_SETUP.md`**: Instructions for setting up Claude API access
+- **`RENDER_DEPLOYMENT.md`**: Comprehensive guide for deploying to Render
+- **`DEPLOYMENT_CHECKLIST.md`**: Quick deployment checklist
+- **`CODE_REVIEW.md`**: Code review findings and cleanup documentation
 
 ## Tech Stack
 
-- **Backend**: Python 3, Flask, OpenAI Python SDK
+- **Backend**: Python 3, Flask, OpenAI Python SDK, Anthropic Python SDK
 - **Frontend**: Vanilla JavaScript (no frameworks), HTML5, CSS3
-- **CSS Framework**: Pico CSS (minimal, classless CSS framework)
-- **AI**: OpenAI GPT-5-mini with web_search tool
+- **CSS Framework**: Pico CSS (minimal, modern CSS framework)
+- **AI Models**: OpenAI GPT-4o/mini, Anthropic Claude 3.5 Haiku
+- **Web Search**: Brave Search API with site filtering
 - **Deployment**: Render (with gunicorn)
 
 ## License

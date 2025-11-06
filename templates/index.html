@@ -55,20 +55,20 @@
   <div class="container">
     
     <!-- ==================================================================
-         PAGE TITLE & MODEL SELECTOR
+         PAGE HEADER & CONTROLS
          ================================================================== -->
-    <header class="page-header">
-      <div class="logo">🦭</div>
-      <h1>Sea Cow AI</h1>
-      <p class="subtitle">Intelligent research with source filtering and AI-powered insights</p>
+    <header class="header">
+      <div class="header__logo">🦭</div>
+      <h1 class="header__title">Sea Cow AI</h1>
+      <p class="header__subtitle">Intelligent research with source filtering and AI-powered insights</p>
     </header>
     
-    <!-- Model selector -->
-    <div class="model-selector">
+    <!-- Controls (dropdowns) -->
+    <div class="controls">
       <!-- Source filter dropdown -->
-      <div class="dropdown-group">
-        <label for="sourceFilter">Data Source:</label>
-        <select id="sourceFilter">
+      <div class="dropdown">
+        <label for="sourceFilter" class="dropdown__label">Data Source:</label>
+        <select id="sourceFilter" class="dropdown__select">
           <option value="all">All Sources</option>
           <option value="bryancounty">bryancountyga.com</option>
           <option value="savannah">seda.org</option>
@@ -79,9 +79,9 @@
       </div>
       
       <!-- Model dropdown -->
-      <div class="dropdown-group">
-        <label for="modelSelect">Chat Model:</label>
-        <select id="modelSelect">
+      <div class="dropdown">
+        <label for="modelSelect" class="dropdown__label">Chat Model:</label>
+        <select id="modelSelect" class="dropdown__select">
           <optgroup label="OpenAI Models">
             <option value="gpt-4o" selected>gpt-4o (GPT-4 flagship)</option>
             <option value="gpt-4o-mini">gpt-4o-mini (faster & cheaper)</option>
@@ -96,11 +96,10 @@
     </div>
     
     <!-- ==================================================================
-         CHAT LOG - Where messages are displayed
+         CHAT - Where messages are displayed
          ================================================================== -->
     <!-- This div is empty initially. JavaScript will add messages here. -->
-    <!-- The "log" class applies our custom chat log styling. -->
-    <div id="log" class="log"></div>
+    <div id="log" class="chat"></div>
     
     <!-- ==================================================================
          STATUS MESSAGE - Shows "Swimming for your answers..." while waiting
@@ -110,25 +109,19 @@
     <div id="status" class="status" aria-live="polite"></div>
     
     <!-- ==================================================================
-         INPUT ROW - Text input, checkbox, and submit button
+         INPUT FORM - Text input and submit button
          ================================================================== -->
-    <!-- The "row" class makes these elements display side-by-side -->
-    <div class="row">
-      
+    <div class="form">
       <!-- Text input where users type their questions -->
-      <!-- id="prompt" lets JavaScript find this element -->
-      <!-- type="text" makes it a single-line text input -->
-      <!-- placeholder shows gray text when the input is empty -->
       <input 
         id="prompt" 
         type="text" 
+        class="form__input"
         placeholder="Ask me anything... I'm all ears and flippers 🦭" 
       />
       
       <!-- Submit button -->
-      <!-- type="button" prevents form submission (which would reload the page) -->
-      <!-- JavaScript will handle the click event instead -->
-      <button id="btn" type="button">Submit</button>
+      <button id="btn" type="button" class="form__button">Submit</button>
     </div>
     
   </div>
