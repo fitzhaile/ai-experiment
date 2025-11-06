@@ -317,6 +317,8 @@ def api_chat():
                         search_query = f"site:seda.org {search_query}"
                     elif source == "uwce":
                         search_query = f"site:uwce.org {search_query}"
+                    elif source == "fred":
+                        search_query = f"site:fred.stlouisfed.org {search_query}"
                     elif source == "gov":
                         search_query = f"site:.gov {search_query}"
                     
@@ -374,6 +376,8 @@ def api_chat():
                     search_query = f"site:seda.org {search_query}"
                 elif source == "uwce":
                     search_query = f"site:uwce.org {search_query}"
+                elif source == "fred":
+                    search_query = f"site:fred.stlouisfed.org {search_query}"
                 elif source == "gov":
                     search_query = f"site:.gov {search_query}"
                 
