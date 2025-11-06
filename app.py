@@ -117,8 +117,7 @@ MODEL = "gpt-4o"
 # Claude model names mapping
 CLAUDE_MODELS = {
     "claude-3-5-sonnet-20241022",
-    "claude-3-5-sonnet-latest",
-    "claude-3-opus-latest",
+    "claude-3-opus-20240229",
     "claude-3-sonnet-20240229",
     "claude-3-haiku-20240307"
 }
