@@ -68,7 +68,7 @@ body {
 .container {
   max-width: 900px;
   margin: 1.5rem auto 2rem auto;
-  padding: 2.5rem;
+  padding: 1.5rem;
   background-color: #fff;
   border-radius: var(--border-radius-card);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 
@@ -472,6 +472,12 @@ body {
    
    Force light mode regardless of system settings.
 */
+
+@media (min-width: 768px) {
+  .container {
+    padding: 2.5rem;
+  }
+}
 
 @media only screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="dark"]) {
