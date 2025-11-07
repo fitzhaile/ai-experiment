@@ -60,8 +60,12 @@ const DATA_SOURCES = {
     url: '.gov',
     name: 'Government Sources'
   },
+  datausa: {
+    url: 'datausa.io',
+    name: 'Data USA'
+  },
   all: {
-    url: 'bryancountyga.com, seda.org, uwce.org, and fred.stlouisfed.org',
+    url: 'bryancountyga.com, seda.org, uwce.org, fred.stlouisfed.org, and datausa.io',
     name: 'All Sources'
   }
 };
@@ -198,6 +202,9 @@ function renderMarkdown(text) {
    * @returns {string} - HTML string
    */
   
+  // Reduce extra blank lines, especially before bullet lines, to avoid big gaps
+  text = text.replace(/\n\n+(?=•\s)/g, '\n');
+
   let html = text;
   
   // Step 1: Escape HTML special characters to prevent security issues
@@ -224,15 +231,33 @@ function renderMarkdown(text) {
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, 
                       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   
-  // Inline code: `code` → <code>code</code>
+  // Fenced code blocks: ```lang\n...\n``` (MUST BE BEFORE inline code!)
+  html = html.replace(/```(\w+)?\s*\n([\s\S]*?)```/g, (m, lang, code) => {
+    const safe = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const language = (lang || '').toLowerCase();
+    return `<pre data-lang="${language}"><code>${safe}</code></pre>`;
+  });
+
+  // Inline code: `code` → <code>code</code> (MUST BE AFTER fenced code blocks!)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
-  // Step 3: Convert line breaks to <br> tags
+
+  // Step 3: Convert lists (• bullets) into <ul><li>
+  // Wrap consecutive lines starting with • into a list
+  html = html.replace(/(?:^|\n)(•\s.+(?:\n•\s.+)*)/g, (block) => {
+    const items = block.trim().split('\n').map(line => line.replace(/^•\s?/, '').trim());
+    if (!items[0] || items[0].startsWith('<')) return block; // skip if not plain text
+    const lis = items.map(it => `<li>${it}</li>`).join('');
+    return `\n<ul>${lis}</ul>`;
+  });
+
+  // Step 4: Convert remaining line breaks to <br> tags
   html = html.replace(/\n/g, '<br>');
   
   return html;
 }
-
 
 // ============================================================================
 // SEND FUNCTION - Send a message to the AI
@@ -299,8 +324,8 @@ async function send() {
     
     // Send a POST request to the /api/chat endpoint
     // ?web=1 enables web search (the AI can look up current information)
-    // ?model=... specifies which OpenAI model to use
-    // ?source=... specifies the  (for SEDA AI database search)
+    // ?model=... specifies which AI model to use (GPT or Claude)
+    // ?source=... specifies the data source filter for web searches
     const res = await fetch(`/api/chat?web=1&model=${selectedModel}&source=${sourceFilter}`, {
       method: 'POST',                                    // HTTP method
       headers: { 'Content-Type': 'application/json' },  // Tell server we're sending JSON
@@ -332,24 +357,24 @@ async function send() {
     
     // If the fetch fails (network error, server down, etc.), show an error
     messages.push({ role: 'assistant', content: 'Error: ' + e });
+  } finally {
+    // ==========================================================================
+    // CLEAN UP (always runs, even if there's an error)
+    // ==========================================================================
+    
+    // Update the display to show the AI's response
+    render();
+    
+    // Clear the loading message
+    statusEl.textContent = '';
+    
+    // Re-enable the button and input field
+    btn.disabled = false;
+    promptEl.disabled = false;
+    
+    // Put focus back on the input field so the user can type another message
+    promptEl.focus();
   }
-  
-  // ==========================================================================
-  // CLEAN UP
-  // ==========================================================================
-  
-  // Update the display to show the AI's response
-  render();
-  
-  // Clear the loading message
-  statusEl.textContent = '';
-  
-  // Re-enable the button and input field
-  btn.disabled = false;
-  promptEl.disabled = false;
-  
-  // Put focus back on the input field so the user can type another message
-  promptEl.focus();
 }
 
 
@@ -372,38 +397,12 @@ promptEl.addEventListener('keydown', (e) => {
 
 
 // ============================================================================
-// URL PARAMETER HANDLING
-// ============================================================================
-
-/**
- * Check for URL parameters and set source filter accordingly.
- * 
- * Reserved for future URL parameter handling.
- */
-function handleURLParameters() {
-  try {
-    // Get URL parameters from the current page URL
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Future URL parameter handling can be added here
-    
-  } catch (error) {
-    // Log any errors but don't break the page
-    console.error('Error handling URL parameters:', error);
-  }
-}
-
-
-// ============================================================================
 // INITIALIZATION
 // ============================================================================
 
 // Wait for the page to fully load before initializing
 // This ensures all DOM elements are available
 document.addEventListener('DOMContentLoaded', function() {
-  // Handle URL parameters to set initial state
-  handleURLParameters();
-  
   // Display the initial state of the conversation (just the system message, which is hidden)
   render();
 });

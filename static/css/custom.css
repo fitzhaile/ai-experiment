@@ -32,7 +32,7 @@
   /* Border radius for rounded corners on buttons, inputs, etc. */
   /* Smaller values = sharper corners, larger values = rounder corners */
   --pico-border-radius: 0.25rem;
-  --border-radius-card: 0.5rem; /* For containers, cards, and chat area */
+  --border-radius-card: 0.3rem; /* For containers, cards, and chat area */
   --border-radius-pill: 0.25rem;   /* For pill-shaped elements (buttons, inputs, bubbles) */
   
   /* Professional color palette with ocean accents */

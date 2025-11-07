@@ -168,6 +168,7 @@ Set these in your `.env` file:
 | `OPENAI_API_KEY` | **Yes** | - | Your OpenAI API key from platform.openai.com |
 | `ANTHROPIC_API_KEY` | Conditional | - | Your Anthropic API key (required for Claude models) |
 | `BRAVE_API_KEY` | **Yes** | - | Your Brave Search API key for web search |
+| `CENSUS_API_KEY` | **Yes** | - | Your Census Bureau API key for ACS demographic data |
 | `PORT` | No | 5000 | Port number for the server |
 | `FLASK_DEBUG` | No | 0 | Set to "1" for auto-reload and debug mode (dev only) |
 
