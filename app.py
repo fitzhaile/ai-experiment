@@ -154,8 +154,14 @@ DATA_SOURCES = {
         "your": "government's",
         "you": "the government"
     },
+    "datausa": {
+        "url": "datausa.io",
+        "name": "Data USA",
+        "your": "Data USA's",
+        "you": "Data USA"
+    },
     "all": {
-        "url": "(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org)",
+        "url": "(site:bryancountyga.com OR site:seda.org OR site:uwce.org OR site:fred.stlouisfed.org OR site:datausa.io)",
         "name": "All Sources",
         "your": "these sources'",
         "you": "these sources"
@@ -286,6 +292,72 @@ def format_search_results(results):
     return formatted
 
 
+def census_acs_search(geography_type, geography_id, variables, year=2022):
+    """
+    Fetch data from the Census Bureau's American Community Survey (ACS) 5-Year Estimates API.
+    
+    Args:
+        geography_type: Type of geography (e.g., 'county', 'state', 'place')
+        geography_id: Geographic identifier (e.g., '13:051' for Chatham County, GA)
+        variables: List of ACS variable codes (e.g., ['B19013_001E'] for median household income)
+        year: ACS year (default 2022)
+        
+    Returns:
+        Dictionary with variable data or None if error
+    """
+    api_key = os.getenv("CENSUS_API_KEY")
+    if not api_key:
+        logging.warning("CENSUS_API_KEY not set, cannot fetch Census data")
+        return None
+    
+    try:
+        # Common ACS variable codes:
+        # B19013_001E - Median Household Income
+        # B01003_001E - Total Population
+        # B17001_002E - Population below poverty level
+        # B23025_005E - Unemployed population
+        
+        # Build the API URL
+        variables_str = ",".join(variables + ["NAME"])  # Always include NAME
+        url = f"https://api.census.gov/data/{year}/acs/acs5"
+        
+        params = {
+            "get": variables_str,
+            "key": api_key
+        }
+        
+        # Handle geography specification
+        if geography_type == "county" and ":" in geography_id:
+            state_id, county_id = geography_id.split(":")
+            params["for"] = f"county:{county_id}"
+            params["in"] = f"state:{state_id}"
+        else:
+            params["for"] = f"{geography_type}:{geography_id}"
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        if len(data) < 2:
+            return None
+        
+        # Parse response (first row is headers, second row is data)
+        headers = data[0]
+        values = data[1]
+        
+        result = {}
+        for i, header in enumerate(headers):
+            if i < len(values):
+                result[header] = values[i]
+        
+        logging.info(f"Census ACS API returned data for {result.get('NAME', 'unknown')}")
+        return result
+        
+    except Exception as e:
+        logging.error(f"Census ACS API error: {e}")
+        return None
+
+
 # ============================================================================
 # ROUTES (URL ENDPOINTS)
 # ============================================================================
@@ -409,7 +481,28 @@ def api_chat():
                     if search_results:
                         # Add search results to system prompt
                         formatted_results = format_search_results(search_results)
-                        system_content += f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible. When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity."
+                        system_content += (
+                            f"\n\n{formatted_results}\n\n"
+                            "Use these search results to answer the user's question. Cite sources with URLs when possible. "
+                            "When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity. "
+                            "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                            "CRITICAL: Only use numerical values that are EXPLICITLY stated in the search results. Do NOT estimate, interpolate, or make up numbers. "
+                            "If the user asks for a single data point (e.g., 'What is the median income in 2022?') and you find it in the search results, provide it. "
+                            "If the user asks for time-series data (e.g., income from 2015-2023) and year-by-year values are NOT in the search results, provide the link and say: 'We are currently unable to display the year-by-year data directly, but you can view the complete dataset at [link]. We are working on integrating directly with the U.S. Census Bureau to provide this data in future updates.' "
+                            "After the factual answer, add an 'Insights' section with 2–4 concise bullet points that synthesize patterns, comparisons, trends, or implications grounded in the cited sources. "
+                            "Do not invent facts; if the evidence is insufficient, state that explicitly."
+                        )
+            # Always encourage a concise Insights section even without search
+            system_content += (
+                "\n\nWhen you present the answer, keep it concise and clear. "
+                "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                "Then add an 'Insights' section with 2–4 bullets that provide thoughtful analysis grounded in the referenced sources. "
+                "Avoid speculation beyond the evidence."
+            )
+            
+            # Log system content for debugging chartjson
+            if "time range" in last_user_message.lower() or ("from" in last_user_message.lower() and "to" in last_user_message.lower()):
+                logging.info(f"[Claude] Time range query detected. System prompt includes chartjson: {'chartjson' in system_content}")
             
             # Call Claude API
             response = anthropic_client.messages.create(
@@ -425,6 +518,12 @@ def api_chat():
             for block in response.content:
                 if hasattr(block, 'text'):
                     text += block.text
+            
+            # Log if chartjson was generated
+            if "chartjson" in text:
+                logging.info(f"[Claude] Response contains chartjson: {text[:200]}")
+            elif "time range" in last_user_message.lower() or ("from" in last_user_message.lower() and "to" in last_user_message.lower()):
+                logging.warning(f"[Claude] Time range query but no chartjson in response")
             
             text = text.strip()
             
@@ -462,7 +561,17 @@ def api_chat():
                 if search_results:
                     # Add search results to the system message
                     formatted_results = format_search_results(search_results)
-                    search_instruction = f"\n\n{formatted_results}\n\nUse these search results to answer the user's question. Cite sources with URLs when possible. When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity."
+                    search_instruction = (
+                        f"\n\n{formatted_results}\n\n"
+                        "Use these search results to answer the user's question. Cite sources with URLs when possible. "
+                        "When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity. "
+                        "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                        "CRITICAL: Only use numerical values that are EXPLICITLY stated in the search results. Do NOT estimate, interpolate, or make up numbers. "
+                        "If the user asks for a single data point (e.g., 'What is the median income in 2022?') and you find it in the search results, provide it. "
+                        "If the user asks for time-series data (e.g., income from 2015-2023) and year-by-year values are NOT in the search results, provide the link and say: 'We are currently unable to display the year-by-year data directly, but you can view the complete dataset at [link]. We are working on integrating directly with the U.S. Census Bureau to provide this data in future updates.' "
+                        "After the factual answer, add an 'Insights' section with 2–4 concise bullet points that synthesize patterns, comparisons, trends, or implications grounded in the cited sources. "
+                        "Do not invent facts; if the evidence is insufficient, state that explicitly."
+                    )
                     
                     # Find system message or create one
                     system_msg_found = False
@@ -475,6 +584,22 @@ def api_chat():
                     # If no system message exists, add one at the beginning
                     if not system_msg_found:
                         messages.insert(0, {"role": "system", "content": search_instruction.strip()})
+                else:
+                    # Ensure insights guidance is present even without search results
+                    insights_only_instruction = (
+                        "After the factual answer, add an 'Insights' section with 2–4 concise bullet points that "
+                        "synthesize patterns, comparisons, trends, or implications grounded in the provided sources or prior context. "
+                        "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                        "Do not invent facts; if evidence is insufficient, say so."
+                    )
+                    system_msg_found = False
+                    for msg in messages:
+                        if isinstance(msg, dict) and msg.get("role") == "system":
+                            msg["content"] = (msg.get("content", "") + "\n\n" + insights_only_instruction).strip()
+                            system_msg_found = True
+                            break
+                    if not system_msg_found:
+                        messages.insert(0, {"role": "system", "content": insights_only_instruction})
         
         # ====================================================================
         # 4. STANDARD OPENAI CHAT MODE (WITH OR WITHOUT SEARCH RESULTS)
