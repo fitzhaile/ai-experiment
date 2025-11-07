@@ -32,6 +32,7 @@ from pathlib import Path  # For working with file paths
 import re       # For regular expression pattern matching
 import requests  # For making HTTP requests to Brave Search API
 import json      # For parsing JSON responses
+from datetime import datetime  # For working with dates and times
 
 # OpenAI API client
 from openai import OpenAI
@@ -292,6 +293,91 @@ def format_search_results(results):
     return formatted
 
 
+def bea_api_search(dataset, table, geography, year=None):
+    """
+    Fetch data from the Bureau of Economic Analysis (BEA) API.
+    
+    Args:
+        dataset: BEA dataset name (e.g., 'Regional', 'NIPA')
+        table: Table code (e.g., 'CAINC1' for personal income)
+        geography: Geographic identifier (e.g., 'COUNTY' or 'STATE')
+        year: Year or 'ALL' for all available years
+        
+    Returns:
+        Dictionary with BEA data or None if error
+    """
+    api_key = os.getenv("BEA_API_KEY")
+    if not api_key:
+        logging.warning("BEA_API_KEY not set, cannot fetch BEA data")
+        return None
+    
+    try:
+        url = "https://apps.bea.gov/api/data"
+        params = {
+            "UserID": api_key,
+            "method": "GetData",
+            "datasetname": dataset,
+            "TableName": table,
+            "GeoFips": geography,
+            "Year": year or "LAST5",
+            "ResultFormat": "JSON"
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get("BEAAPI", {}).get("Results"):
+            logging.info(f"BEA API returned data for {dataset}/{table}")
+            return data["BEAAPI"]["Results"]
+        return None
+        
+    except Exception as e:
+        logging.error(f"BEA API error: {e}")
+        return None
+
+
+def bls_api_search(series_ids, start_year=None, end_year=None):
+    """
+    Fetch data from the Bureau of Labor Statistics (BLS) API.
+    
+    Args:
+        series_ids: List of BLS series IDs (e.g., ['LAUCN130510000000003'] for unemployment)
+        start_year: Start year (optional)
+        end_year: End year (optional)
+        
+    Returns:
+        Dictionary with BLS data or None if error
+    """
+    api_key = os.getenv("BLS_API_KEY")
+    # BLS API works without key but has lower rate limits
+    
+    try:
+        url = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
+        
+        payload = {
+            "seriesid": series_ids,
+            "startyear": start_year or str(datetime.now().year - 5),
+            "endyear": end_year or str(datetime.now().year)
+        }
+        
+        if api_key:
+            payload["registrationkey"] = api_key
+        
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get("status") == "REQUEST_SUCCEEDED":
+            logging.info(f"BLS API returned data for {len(series_ids)} series")
+            return data.get("Results", {}).get("series", [])
+        return None
+        
+    except Exception as e:
+        logging.error(f"BLS API error: {e}")
+        return None
+
+
 def census_acs_search(geography_type, geography_id, variables, year=2022):
     """
     Fetch data from the Census Bureau's American Community Survey (ACS) 5-Year Estimates API.
@@ -356,6 +442,120 @@ def census_acs_search(geography_type, geography_id, variables, year=2022):
     except Exception as e:
         logging.error(f"Census ACS API error: {e}")
         return None
+
+
+def fetch_economic_data(query, location=None):
+    """
+    Smart economic data fetcher that tries multiple APIs in order:
+    1. ACS (American Community Survey / Census) - for income/demographic data
+    2. BLS (Bureau of Labor Statistics) - for employment data
+    3. BEA (Bureau of Economic Analysis) - for GDP data
+    4. Falls back to DataUSA and FRED web search
+    
+    Args:
+        query: User's question/query
+        location: Optional location identifier (not currently used)
+        
+    Returns:
+        Tuple of (data, source) where data is the API response and source is the API name,
+        or (None, None) if no API data found
+    """
+    print(f"\n===== fetch_economic_data called =====")
+    print(f"Query: '{query}'")
+    print(f"Location: '{location}'")
+    logging.info(f"===== fetch_economic_data called with query: '{query}', location: '{location}' =====")
+    query_lower = query.lower()
+    
+    # Detect year in query (e.g., "2022", "in 2023", "for 2021")
+    import re
+    year_match = re.search(r'\b(20\d{2})\b', query)
+    requested_year = int(year_match.group(1)) if year_match else 2023  # Default to 2023
+    print(f">>> Detected year: {requested_year}")
+    
+    # Detect what kind of economic data is being requested
+    is_income = any(word in query_lower for word in ['income', 'earnings', 'wage', 'salary'])
+    is_employment = any(word in query_lower for word in ['employment', 'unemployment', 'job', 'labor'])
+    is_gdp = any(word in query_lower for word in ['gdp', 'gross domestic product', 'economic output'])
+    is_population = any(word in query_lower for word in ['population', 'demographic'])
+    
+    # Detect location from query text (not dropdown value)
+    has_location = any(word in query_lower for word in ['county', 'chatham', 'savannah', 'bryan', 'georgia', 'ga'])
+    
+    # Try ACS first for demographic/income data
+    if (is_income or is_population) and has_location:
+        try:
+            # Map common county names to FIPS codes
+            # Chatham County, GA (includes Savannah)
+            if 'chatham' in query_lower or 'savannah' in query_lower:
+                variables = []
+                if is_income:
+                    variables.append('B19013_001E')  # Median household income
+                if is_population:
+                    variables.append('B01003_001E')  # Total population
+                
+                if variables:
+                    print(f">>> Attempting ACS API for Chatham County, GA: {variables} (year={requested_year})")
+                    logging.info(f"Attempting ACS API for Chatham County, GA: {variables} (year={requested_year})")
+                    acs_data = census_acs_search('county', '13:051', variables, year=requested_year)
+                    print(f">>> ACS API result: {acs_data}")
+                    if acs_data:
+                        print(f">>> ACS API SUCCESS!")
+                        logging.info(f"ACS API SUCCESS: {acs_data}")
+                        return (acs_data, 'ACS')
+                    else:
+                        print(">>> ACS API returned no data")
+                        logging.warning("ACS API returned no data")
+            
+            # Bryan County, GA
+            elif 'bryan' in query_lower:
+                variables = []
+                if is_income:
+                    variables.append('B19013_001E')
+                if is_population:
+                    variables.append('B01003_001E')
+                
+                if variables:
+                    logging.info(f"Attempting ACS API for Bryan County, GA: {variables} (year={requested_year})")
+                    acs_data = census_acs_search('county', '13:029', variables, year=requested_year)
+                    if acs_data:
+                        return (acs_data, 'ACS')
+        except Exception as e:
+            logging.error(f"ACS attempt failed: {e}")
+    
+    # Try BLS for employment data
+    if is_employment and has_location:
+        try:
+            # Chatham County unemployment
+            if 'chatham' in query_lower or 'savannah' in query_lower:
+                series_ids = ['LAUCN130510000000003']  # Chatham County, GA unemployment
+                logging.info(f"Attempting BLS API for Chatham County: {series_ids}")
+                bls_data = bls_api_search(series_ids)
+                if bls_data:
+                    return (bls_data, 'BLS')
+            
+            # Bryan County unemployment
+            elif 'bryan' in query_lower:
+                series_ids = ['LAUCN130290000000003']  # Bryan County, GA unemployment
+                logging.info(f"Attempting BLS API for Bryan County: {series_ids}")
+                bls_data = bls_api_search(series_ids)
+                if bls_data:
+                    return (bls_data, 'BLS')
+        except Exception as e:
+            logging.error(f"BLS attempt failed: {e}")
+    
+    # Try BEA for GDP/economic data
+    if is_gdp and has_location:
+        try:
+            logging.info("Attempting BEA API for GDP data")
+            bea_data = bea_api_search('Regional', 'CAGDP1', 'COUNTY')
+            if bea_data:
+                return (bea_data, 'BEA')
+        except Exception as e:
+            logging.error(f"BEA attempt failed: {e}")
+    
+    # No API data found
+    logging.info("No economic API data found, will fall back to web search")
+    return (None, None)
 
 
 # ============================================================================
@@ -434,6 +634,9 @@ def api_chat():
         # Check if web search is enabled via the ?web=1 query parameter
         use_web = request.args.get("web") == "1"
         
+        logging.info(f"===== /api/chat request: model={model}, source={source}, use_web={use_web} =====")
+        logging.info(f"Last user message: {messages[-1] if messages else 'None'}")
+        
         # ====================================================================
         # 2. CLAUDE (ANTHROPIC) MODELS
         # ====================================================================
@@ -471,12 +674,46 @@ def api_chat():
                     # Substitute pronouns based on data source
                     search_query = substitute_pronouns(search_query, source)
                     
-                    # Add site: filter based on source parameter
-                    search_query = apply_site_filter(search_query, source)
+                    # Try economic data APIs first (BEA, BLS, ACS)
+                    api_data, api_source = fetch_economic_data(search_query, location=source)
                     
-                    logging.info(f"Performing Brave Search for Claude: {search_query}")
-                    
-                    search_results = brave_search(search_query, count=10)
+                    if api_data and api_source:
+                        # We got data from an official API!
+                        print(f">>> [Claude] Using {api_source} API data instead of web search")
+                        logging.info(f"Using {api_source} API data instead of web search")
+                        formatted_api_data = f"\n\nData from {api_source} API:\n{json.dumps(api_data, indent=2)}\n\n"
+                        api_instruction = (
+                            formatted_api_data +
+                            f"Use this official {api_source} data to answer the user's question. "
+                            "The B19013_001E field contains the median household income value (5-year estimate). "
+                            "When presenting numerical data, format them in **bold** using markdown for clarity. "
+                            "Present your answer in a single paragraph without extra line breaks between sentences. "
+                            "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                            "After the factual answer, add an 'Insights' section with 2–4 concise bullet points."
+                        )
+                        print(f">>> [Claude] Formatted API instruction: {api_instruction[:200]}...")
+                        system_content += api_instruction
+                        search_results = None  # Skip web search
+                    else:
+                        # Fall back to web search with DataUSA and FRED priority
+                        # Add site: filter based on source parameter
+                        search_query = apply_site_filter(search_query, source)
+                        
+                        # If no specific source, prioritize DataUSA and FRED for economic queries
+                        if source == 'all' and any(word in search_query.lower() for word in ['income', 'wage', 'employment', 'unemployment', 'gdp', 'economy']):
+                            # Search DataUSA first
+                            logging.info(f"Trying DataUSA for economic data: site:datausa.io {search_query}")
+                            search_results = brave_search(f"site:datausa.io {search_query}", count=5)
+                            
+                            # If DataUSA doesn't have good results, try FRED
+                            if not search_results or len(search_results) < 2:
+                                logging.info(f"Trying FRED for economic data: site:fred.stlouisfed.org {search_query}")
+                                fred_results = brave_search(f"site:fred.stlouisfed.org {search_query}", count=5)
+                                if fred_results:
+                                    search_results = fred_results
+                        else:
+                            logging.info(f"Performing Brave Search for Claude: {search_query}")
+                            search_results = brave_search(search_query, count=10)
                     
                     if search_results:
                         # Add search results to system prompt
@@ -551,38 +788,81 @@ def api_chat():
                 # Substitute pronouns based on data source
                 search_query = substitute_pronouns(search_query, source)
                 
-                # Add site: filter based on source parameter
-                search_query = apply_site_filter(search_query, source)
+                # Try economic data APIs first (BEA, BLS, ACS)
+                api_data, api_source = fetch_economic_data(search_query, location=source)
                 
-                logging.info(f"Performing Brave Search for GPT: {search_query}")
+                search_instruction = None  # Will be set by either API or web search
                 
-                search_results = brave_search(search_query, count=10)
-                
-                if search_results:
-                    # Add search results to the system message
-                    formatted_results = format_search_results(search_results)
-                    search_instruction = (
-                        f"\n\n{formatted_results}\n\n"
-                        "Use these search results to answer the user's question. Cite sources with URLs when possible. "
-                        "When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity. "
-                        "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
-                        "CRITICAL: Only use numerical values that are EXPLICITLY stated in the search results. Do NOT estimate, interpolate, or make up numbers. "
-                        "If the user asks for a single data point (e.g., 'What is the median income in 2022?') and you find it in the search results, provide it. "
-                        "If the user asks for time-series data (e.g., income from 2015-2023) and year-by-year values are NOT in the search results, provide the link and say: 'We are currently unable to display the year-by-year data directly, but you can view the complete dataset at [link]. We are working on integrating directly with the U.S. Census Bureau to provide this data in future updates.' "
-                        "After the factual answer, add an 'Insights' section with 2–4 concise bullet points that synthesize patterns, comparisons, trends, or implications grounded in the cited sources. "
-                        "Do not invent facts; if the evidence is insufficient, state that explicitly."
-                    )
+                if api_data and api_source:
+                    # We got data from an official API!
+                    print(f">>> Using {api_source} API data instead of web search")
+                    logging.info(f"Using {api_source} API data instead of web search")
                     
+                    # Extract year from API data if available (ACS includes it in the response)
+                    year_info = api_data.get('year', 'latest')
+                    
+                    formatted_api_data = f"\n\nData from {api_source} API:\n{json.dumps(api_data, indent=2)}\n\n"
+                    search_instruction = (
+                        formatted_api_data +
+                        f"Use this official {api_source} data to answer the user's question. "
+                        "The B19013_001E field contains the median household income value (5-year estimate). "
+                        "When presenting numerical data, format them in **bold** using markdown for clarity. "
+                        "Present your answer in a single paragraph without extra line breaks between sentences. "
+                        "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                        "After the factual answer, add an 'Insights' section with 2–4 concise bullet points."
+                    )
+                    print(f">>> Formatted API instruction: {search_instruction[:200]}...")
+                else:
+                    # Fall back to web search with DataUSA and FRED priority
+                    # Add site: filter based on source parameter
+                    search_query = apply_site_filter(search_query, source)
+                    
+                    # If no specific source, prioritize DataUSA and FRED for economic queries
+                    if source == 'all' and any(word in search_query.lower() for word in ['income', 'wage', 'employment', 'unemployment', 'gdp', 'economy']):
+                        # Search DataUSA first
+                        logging.info(f"Trying DataUSA for economic data: site:datausa.io {search_query}")
+                        search_results = brave_search(f"site:datausa.io {search_query}", count=5)
+                        
+                        # If DataUSA doesn't have good results, try FRED
+                        if not search_results or len(search_results) < 2:
+                            logging.info(f"Trying FRED for economic data: site:fred.stlouisfed.org {search_query}")
+                            fred_results = brave_search(f"site:fred.stlouisfed.org {search_query}", count=5)
+                            if fred_results:
+                                search_results = fred_results
+                    else:
+                        logging.info(f"Performing Brave Search for GPT: {search_query}")
+                        search_results = brave_search(search_query, count=10)
+                    
+                    # Format web search results into instruction
+                    if search_results:
+                        formatted_results = format_search_results(search_results)
+                        search_instruction = (
+                            f"\n\n{formatted_results}\n\n"
+                            "Use these search results to answer the user's question. Cite sources with URLs when possible. "
+                            "When presenting numerical data (statistics, dollar amounts, percentages, years, etc.), format them in **bold** using markdown for clarity. "
+                            "Use bullets that start with the Unicode bullet symbol (•) instead of dashes or numbers. "
+                            "CRITICAL: Only use numerical values that are EXPLICITLY stated in the search results. Do NOT estimate, interpolate, or make up numbers. "
+                            "If the user asks for a single data point (e.g., 'What is the median income in 2022?') and you find it in the search results, provide it. "
+                            "If the user asks for time-series data (e.g., income from 2015-2023) and year-by-year values are NOT in the search results, provide the link and say: 'We are currently unable to display the year-by-year data directly, but you can view the complete dataset at [link]. We are working on integrating directly with the U.S. Census Bureau to provide this data in future updates.' "
+                            "After the factual answer, add an 'Insights' section with 2–4 concise bullet points that synthesize patterns, comparisons, trends, or implications grounded in the cited sources. "
+                            "Do not invent facts; if the evidence is insufficient, state that explicitly."
+                        )
+                
+                # Now add the instruction (from either API or web search) to messages
+                if search_instruction:
+                    print(f">>> Adding instruction to messages (API={bool(api_data)}, Web={bool(not api_data)})")
                     # Find system message or create one
                     system_msg_found = False
                     for msg in messages:
                         if isinstance(msg, dict) and msg.get("role") == "system":
+                            print(f">>> Appending to existing system message")
                             msg["content"] += search_instruction
                             system_msg_found = True
                             break
                     
                     # If no system message exists, add one at the beginning
                     if not system_msg_found:
+                        print(f">>> Creating new system message with instruction")
                         messages.insert(0, {"role": "system", "content": search_instruction.strip()})
                 else:
                     # Ensure insights guidance is present even without search results
